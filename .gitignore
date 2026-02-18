@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+
+# Environment
+.env
+
+# Data & Storage
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+embedding_cache/
+evaluation/results.json
+evaluation/test_queries.json
+
+# Next.js
+.next/
+node_modules/
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+frontend/.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+
+# Distribution
+dist/
+build/
+
+# Logs
+*.log
+test_final_report.txt
+demo_output.txt
+
+# OS
+Thumbs.db
+.DS_Store
