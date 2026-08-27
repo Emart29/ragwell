@@ -1,3 +1,4 @@
+from app.config import settings
 """Re-ranker using Jina Reranker API.
 
 Replaces local CrossEncoder to remove sentence-transformers dependency.
@@ -54,7 +55,7 @@ class Reranker:
     def __init__(self):
         if self._initialized:
             return
-        self.api_key = os.getenv("JINA_API_KEY")
+        self.api_key = settings.JINA_API_KEY
         self.model = "jina-reranker-v2-base-multilingual"
         self._headers = {
             "Authorization": f"Bearer {self.api_key}",

@@ -75,7 +75,14 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
 );
 """
 
-# Triggers to keep FTS5 index in sync
+# Triggers keeping the FTS5 index in step with the chunks table.
+#
+# Deletes use a plain DELETE rather than FTS5's "delete" command. That command —
+# INSERT INTO chunks_fts(chunks_fts, rowid, ...) VALUES('delete', ...) — is only
+# valid for external-content tables, ones declared with content=. This table
+# stores its own content, so the command raises "SQL logic error" and takes the
+# whole transaction with it. The symptom is that deleting any chunk fails, which
+# also means a document cannot be deleted and a corpus cannot be re-ingested.
 CREATE_FTS5_TRIGGERS = """
 -- Insert trigger
 CREATE TRIGGER IF NOT EXISTS chunks_fts_insert AFTER INSERT ON chunks BEGIN
@@ -85,14 +92,12 @@ END;
 
 -- Delete trigger
 CREATE TRIGGER IF NOT EXISTS chunks_fts_delete AFTER DELETE ON chunks BEGIN
-    INSERT INTO chunks_fts(chunks_fts, rowid, text, id, document_id)
-    VALUES ('delete', OLD.rowid, OLD.text, OLD.id, OLD.document_id);
+    DELETE FROM chunks_fts WHERE rowid = OLD.rowid;
 END;
 
 -- Update trigger
 CREATE TRIGGER IF NOT EXISTS chunks_fts_update AFTER UPDATE ON chunks BEGIN
-    INSERT INTO chunks_fts(chunks_fts, rowid, text, id, document_id)
-    VALUES ('delete', OLD.rowid, OLD.text, OLD.id, OLD.document_id);
+    DELETE FROM chunks_fts WHERE rowid = OLD.rowid;
     INSERT INTO chunks_fts(text, id, document_id, rowid)
     VALUES (NEW.text, NEW.id, NEW.document_id, NEW.rowid);
 END;

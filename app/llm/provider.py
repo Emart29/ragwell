@@ -19,7 +19,7 @@ class LLMProvider:
         self.gemini_model = None
         
         # Initialize Groq
-        groq_api_key = os.getenv("GROQ_API_KEY")
+        groq_api_key = settings.GROQ_API_KEY
         if groq_api_key:
             try:
                 from groq import Groq
@@ -32,7 +32,7 @@ class LLMProvider:
 
         # Initialize Gemini if Groq is not available or as fallback
         if not self.groq_client:
-            gemini_api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")
+            gemini_api_key = settings.GEMINI_API_KEY
             if gemini_api_key:
                 try:
                     import google.generativeai as genai

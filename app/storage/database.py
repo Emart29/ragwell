@@ -60,11 +60,20 @@ def create_fts5_tables():
         with engine.connect() as conn:
             # We use a script to ensure the table and triggers exist without wiping data if already there.
             # However, to change schema safely we might need to drop, but here we'll just ensure it's synced.
+            # The triggers are dropped before being recreated. CREATE TRIGGER
+            # IF NOT EXISTS leaves an existing one alone, so a database made by
+            # an earlier version would keep the delete trigger that raises
+            # "SQL logic error" and stays unable to delete a chunk. Triggers
+            # hold no data, so recreating them costs nothing.
             setup_script = f"""
             {CREATE_FTS5_TABLE};
-            
+
+            DROP TRIGGER IF EXISTS chunks_fts_insert;
+            DROP TRIGGER IF EXISTS chunks_fts_delete;
+            DROP TRIGGER IF EXISTS chunks_fts_update;
+
             {CREATE_FTS5_TRIGGERS};
-            
+
             -- Sync existing data if any was missed
             INSERT INTO chunks_fts(text, id, document_id, rowid)
             SELECT text, id, document_id, rowid FROM chunks

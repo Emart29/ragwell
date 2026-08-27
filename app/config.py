@@ -12,9 +12,16 @@ class Settings(BaseSettings):
         extra='ignore'
     )
     
-    # API Keys
+    # API Keys. Every one the application uses is declared here, and every
+    # consumer reads them from this object rather than from os.environ.
+    # pydantic-settings loads .env into these fields and exports nothing to the
+    # process environment, so a module calling os.getenv sees a key only when
+    # something else happened to set it first — which made key availability
+    # depend on import order, and tests pass or fail depending on what ran
+    # before them.
     JINA_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
+    GROQ_API_KEY: str | None = None
     
     # Database Configuration
     DATABASE_PATH: str = './data/ragwell.db'
