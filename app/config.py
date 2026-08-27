@@ -35,6 +35,21 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = 'jina-embeddings-v3'
     EMBEDDING_DIMENSIONS: int = 384
 
+    # Generation. Both model ids this project previously pinned have since been
+    # withdrawn by their providers — llama-3.3-70b-versatile and
+    # gemini-1.5-flash — so they are configuration rather than constants, and
+    # the Gemini default is a rolling alias for the same reason.
+    DEFAULT_LLM_PROVIDER: str = 'groq'
+    GROQ_MODEL: str = 'openai/gpt-oss-20b'
+    GEMINI_MODEL: str = 'gemini-flash-latest'
+
+    #: Model for the long-context arm. Named separately from GEMINI_MODEL so
+    #: the comparison cannot be changed by accident when the default moves.
+    LONG_CONTEXT_MODEL: str = 'gemini-flash-latest'
+
+    GENERATION_TEMPERATURE: float = 0.7
+    GENERATION_TIMEOUT: float = 30.0
+
 
 # Global settings instance
 settings = Settings()
