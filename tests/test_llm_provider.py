@@ -96,3 +96,29 @@ class TestCompatibilityWrapper:
 
     def test_it_reports_which_provider_it_uses(self):
         assert LLMProvider("gemini").provider_name == "gemini"
+
+
+class TestTokenCounting:
+    """The long-context arm reports cost per query, so tokens are counted by
+    the model rather than estimated from character count."""
+
+    def test_it_counts_tokens_for_real(self):
+        provider = GeminiProvider()
+        if not provider.is_available():
+            pytest.skip("needs GEMINI_API_KEY")
+        count = provider.count_tokens("The quick brown fox jumps over the lazy dog.")
+        assert 5 < count < 30
+
+    def test_a_longer_passage_counts_higher(self):
+        provider = GeminiProvider()
+        if not provider.is_available():
+            pytest.skip("needs GEMINI_API_KEY")
+        short = provider.count_tokens("one sentence here.")
+        long = provider.count_tokens("one sentence here. " * 50)
+        assert long > short * 10
+
+    def test_an_unconfigured_provider_raises(self):
+        provider = GeminiProvider()
+        provider._client = None
+        with pytest.raises(GenerationError):
+            provider.count_tokens("anything")

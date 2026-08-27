@@ -110,49 +110,77 @@ class GeminiProvider(GenerationProvider):
     Kept separate from Groq rather than sharing a client, because the whole
     point of having it is to compare the two, and a shared fallback path would
     let one arm answer for the other.
+
+    Built on ``google-genai``. The older ``google-generativeai`` package is out
+    of support and no longer receives fixes, which is not a foundation for the
+    arm that carries this project's headline measurement.
     """
 
     name = "gemini"
 
     def __init__(self, model: str | None = None) -> None:
         super().__init__(model or settings.GEMINI_MODEL)
-        self._model = None
+        self._client = None
         if not settings.GEMINI_API_KEY:
             logger.info("GEMINI_API_KEY not set; Gemini provider unavailable")
             return
         try:
-            import google.generativeai as genai
+            from google import genai
 
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            self._model = genai.GenerativeModel(self.model)
+            self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
             logger.info("Gemini provider ready (model=%s)", self.model)
         except ImportError:
-            logger.warning(
-                "google-generativeai not installed; Gemini provider unavailable"
-            )
+            logger.warning("google-genai not installed; Gemini provider unavailable")
         except Exception as exc:  # noqa: BLE001
             logger.error("Gemini provider failed to initialise: %s", exc)
 
     def is_available(self) -> bool:
-        return self._model is not None
+        return self._client is not None
 
-    def generate(self, prompt: str, max_tokens: int = 500) -> str:
-        if self._model is None:
+    def count_tokens(self, text: str) -> int:
+        """Count tokens as the model will, for the long-context accounting.
+
+        The long-context arm reports cost per query, and estimating tokens by
+        dividing characters by four would make that number fiction.
+        """
+        if self._client is None:
             raise GenerationError("Gemini provider is not configured")
         try:
-            response = self._model.generate_content(
-                prompt,
-                generation_config={
-                    "max_output_tokens": max_tokens,
-                    "temperature": settings.GENERATION_TEMPERATURE,
-                },
+            return self._client.models.count_tokens(
+                model=self.model, contents=text
+            ).total_tokens
+        except Exception as exc:  # noqa: BLE001
+            raise GenerationError(f"gemini/{self.model}: {exc}") from exc
+
+    def generate(self, prompt: str, max_tokens: int = 500) -> str:
+        if self._client is None:
+            raise GenerationError("Gemini provider is not configured")
+        from google.genai import types
+
+        try:
+            response = self._client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=settings.GENERATION_TEMPERATURE,
+                ),
             )
             text = response.text
         except Exception as exc:  # noqa: BLE001
             raise GenerationError(f"gemini/{self.model}: {exc}") from exc
 
         if not text:
-            raise GenerationError(f"gemini/{self.model}: empty completion")
+            # A thinking model can spend the whole budget before emitting
+            # anything, so the reason is worth carrying rather than reporting a
+            # bare empty string.
+            reason = "unknown"
+            candidates = getattr(response, "candidates", None) or []
+            if candidates:
+                reason = getattr(candidates[0], "finish_reason", "unknown")
+            raise GenerationError(
+                f"gemini/{self.model}: empty completion (finish_reason={reason})"
+            )
         return text
 
 
