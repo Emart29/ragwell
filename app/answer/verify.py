@@ -44,6 +44,7 @@ by with without about into over under is are was were be been being has have
 had do does did not no nor so as it its their his her they he she we you i
 which who whom whose when where while there here also can could may might must
 shall should will would very more most much many few some any all each other
+how what why whether does doing done get got give gives given
 """.split())
 
 #: Share of a claim's content words that must appear in the chunk. Set low on
