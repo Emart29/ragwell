@@ -20,6 +20,8 @@ behaviour is unchanged. New code should use ``get_named_provider`` and handle
 
 from __future__ import annotations
 
+import random
+import time
 from typing import Optional
 
 from app.config import settings
@@ -35,6 +37,46 @@ class GenerationError(RuntimeError):
     ``None`` produces an answer grounded in nothing and reports no error, which
     is the failure this layer exists to prevent.
     """
+
+
+#: Markers of a failure that may succeed on a retry. Capacity and rate limits
+#: are temporary; a rejected schema or a missing model will fail identically
+#: however many times it is sent, and retrying those wastes an allowance to
+#: learn nothing.
+TRANSIENT_MARKERS = (
+    "503", "unavailable", "high demand", "overloaded",
+    "429", "rate limit", "resource_exhausted",
+    "500", "internal error", "deadline", "timeout",
+)
+
+
+def is_transient(error: str) -> bool:
+    """Whether an error is worth sending again."""
+    lowered = error.lower()
+    return any(marker in lowered for marker in TRANSIENT_MARKERS)
+
+
+def retry_with_backoff(call, attempts: int, label: str):
+    """Run ``call``, retrying only failures that retrying can fix.
+
+    Jittered because a benchmark runs many of these side by side, and a fixed
+    backoff would synchronise them into the same retry moment.
+    """
+    last: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return call()
+        except GenerationError as exc:
+            last = exc
+            if not is_transient(str(exc)) or attempt == attempts:
+                raise
+            wait = min(2 ** (attempt - 1), 8) * (0.5 + random.random())
+            logger.warning(
+                "%s transient failure, retrying in %.1fs (attempt %d/%d)",
+                label, wait, attempt, attempts,
+            )
+            time.sleep(wait)
+    raise last  # unreachable; kept so the type is honest
 
 
 class GenerationProvider:

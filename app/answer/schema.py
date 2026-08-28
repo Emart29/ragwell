@@ -121,3 +121,48 @@ def strict_answer_schema() -> tuple[dict[str, Any], list[str]]:
     from app.answer.contract import answer_json_schema
 
     return for_strict_mode(answer_json_schema())
+
+
+def for_gemini(schema: dict[str, Any]) -> dict[str, Any]:
+    """Rewrite a strict-mode schema into the shape Gemini's validator accepts.
+
+    Gemini's ``Schema`` type models unions as ``any_of`` and has no ``one_of``
+    at all, so a discriminated union arrives as an unrecognised key and the
+    request is rejected client-side with *"Extra inputs are not permitted"*.
+
+    The two keywords are not equivalent in JSON Schema — ``oneOf`` requires
+    exactly one branch to match, ``anyOf`` at least one — but the branches here
+    are distinguished by a constant ``kind``, so no value can satisfy more than
+    one and the looser keyword admits nothing extra.
+
+    ``additionalProperties`` goes too: Gemini has no such field and returns
+    *"Cannot find field"* for it, while Groq's strict mode **requires** it on
+    every object. The same contract therefore needs opposite treatment on the
+    two providers, and neither documents the difference — both were found by
+    sending the schema and reading the 400.
+
+    What Gemini will not enforce, Pydantic still does: the contract has
+    ``extra="forbid"``, so an invented field is rejected when the reply is
+    parsed rather than never being sent.
+    """
+    dropped = frozenset({"additionalProperties"})
+
+    def rewrite(node: Any) -> Any:
+        if isinstance(node, list):
+            return [rewrite(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        out = {}
+        for key, value in node.items():
+            if key in dropped:
+                continue
+            out["anyOf" if key == "oneOf" else key] = rewrite(value)
+        return out
+
+    return rewrite(deepcopy(schema))
+
+
+def gemini_answer_schema() -> dict[str, Any]:
+    """The answer contract in the form Gemini accepts."""
+    schema, _ = strict_answer_schema()
+    return for_gemini(schema)

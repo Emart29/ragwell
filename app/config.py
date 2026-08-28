@@ -41,14 +41,23 @@ class Settings(BaseSettings):
     # the Gemini default is a rolling alias for the same reason.
     DEFAULT_LLM_PROVIDER: str = 'groq'
     GROQ_MODEL: str = 'openai/gpt-oss-20b'
-    GEMINI_MODEL: str = 'gemini-flash-latest'
+    # Pinned rather than a rolling alias. `gemini-flash-latest` was
+    # persistently 503 while pinned models of the same generation served
+    # normally, so the alias buys currency at the cost of availability -
+    # a poor trade for a benchmark that has to complete.
+    GEMINI_MODEL: str = 'gemini-3.6-flash'
 
     #: Model for the long-context arm. Named separately from GEMINI_MODEL so
     #: the comparison cannot be changed by accident when the default moves.
-    LONG_CONTEXT_MODEL: str = 'gemini-flash-latest'
+    LONG_CONTEXT_MODEL: str = 'gemini-3.6-flash'
 
     GENERATION_TEMPERATURE: float = 0.7
     GENERATION_TIMEOUT: float = 30.0
+
+    #: Attempts for a failure that retrying can fix. Capacity errors are
+    #: common enough on a free tier that one attempt loses whole cells of a
+    #: benchmark to a problem that clears in seconds.
+    GENERATION_RETRIES: int = 4
 
 
 # Global settings instance
