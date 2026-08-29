@@ -1,0 +1,463 @@
+{
+  "sampling": {
+    "top_k": 8,
+    "strategy": "hybrid",
+    "rag_model": "gemini/gemini-3.5-flash-lite",
+    "long_context_model": "gemini-3.5-flash-lite",
+    "elapsed_seconds": 429.3
+  },
+  "cells": [
+    {
+      "arm": "rag",
+      "corpus_size": "1_report",
+      "reports": 1,
+      "question_count": 10,
+      "skipped_reason": "",
+      "errors": 0,
+      "corpus_tokens": 0,
+      "prompt_tokens": 26549,
+      "latency_ms": 48851.65440000128,
+      "scores": [
+        {
+          "question_id": "mdic_dmb_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "dmb_insured_deposits_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "mfb_limit_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "coverage_effect_on_deposits",
+          "category": "synthesis",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.5,
+          "hallucinated_claims": 0,
+          "total_claims": 2,
+          "judged": false
+        },
+        {
+          "question_id": "limits_by_institution_type",
+          "category": "synthesis",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 2,
+          "judged": false
+        },
+        {
+          "question_id": "ethiopia_scheme",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "sovereign_wealth",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "mdic_current",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "mfb_limit_unqualified",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "dmb_deposits_prior_year",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        }
+      ]
+    },
+    {
+      "arm": "long_context",
+      "corpus_size": "1_report",
+      "reports": 1,
+      "question_count": 10,
+      "skipped_reason": "",
+      "errors": 3,
+      "corpus_tokens": 59574,
+      "prompt_tokens": 417018,
+      "latency_ms": 59040.233100007754,
+      "scores": [
+        {
+          "question_id": "mdic_dmb_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "dmb_insured_deposits_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "mfb_limit_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": false,
+          "missing_facts": [],
+          "trapped_on": [
+            "200,000"
+          ],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "coverage_effect_on_deposits",
+          "category": "synthesis",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.5,
+          "hallucinated_claims": 0,
+          "total_claims": 2,
+          "judged": false
+        },
+        {
+          "question_id": "limits_by_institution_type",
+          "category": "synthesis",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 2,
+          "judged": false
+        },
+        {
+          "question_id": "ethiopia_scheme",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "sovereign_wealth",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        }
+      ]
+    },
+    {
+      "arm": "rag",
+      "corpus_size": "2_reports",
+      "reports": 2,
+      "question_count": 10,
+      "skipped_reason": "",
+      "errors": 0,
+      "corpus_tokens": 0,
+      "prompt_tokens": 25637,
+      "latency_ms": 36537.432399985846,
+      "scores": [
+        {
+          "question_id": "mdic_dmb_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "dmb_insured_deposits_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "mfb_limit_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "coverage_effect_on_deposits",
+          "category": "synthesis",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.5,
+          "hallucinated_claims": 0,
+          "total_claims": 2,
+          "judged": false
+        },
+        {
+          "question_id": "limits_by_institution_type",
+          "category": "synthesis",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 2,
+          "judged": false
+        },
+        {
+          "question_id": "ethiopia_scheme",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "sovereign_wealth",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "mdic_current",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "mfb_limit_unqualified",
+          "category": "misleading",
+          "declined": false,
+          "correct": false,
+          "missing_facts": [],
+          "trapped_on": [
+            "N200,000"
+          ],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "dmb_deposits_prior_year",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        }
+      ]
+    },
+    {
+      "arm": "long_context",
+      "corpus_size": "2_reports",
+      "reports": 2,
+      "question_count": 10,
+      "skipped_reason": "",
+      "errors": 4,
+      "corpus_tokens": 115575,
+      "prompt_tokens": 693450,
+      "latency_ms": 188446.68559994898,
+      "scores": [
+        {
+          "question_id": "mdic_dmb_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "dmb_insured_deposits_2024",
+          "category": "direct",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "ethiopia_scheme",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "sovereign_wealth",
+          "category": "absent",
+          "declined": true,
+          "correct": null,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 0.0,
+          "hallucinated_claims": 0,
+          "total_claims": 0,
+          "judged": false
+        },
+        {
+          "question_id": "mdic_current",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        },
+        {
+          "question_id": "mfb_limit_unqualified",
+          "category": "misleading",
+          "declined": false,
+          "correct": true,
+          "missing_facts": [],
+          "trapped_on": [],
+          "citation_accuracy": 1.0,
+          "hallucinated_claims": 0,
+          "total_claims": 1,
+          "judged": false
+        }
+      ]
+    }
+  ]
+}
