@@ -51,7 +51,17 @@ def _generator(provider: str) -> AnswerGenerator:
 class AnswerRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=1000)
     strategy: str = Field("hybrid", description="vector, keyword, hybrid, hyde, expanded")
-    top_k: int = Field(8, ge=1, le=50)
+    top_k: int = Field(
+        8, ge=1, le=50,
+        description=(
+            "Candidates the search returns. Reranking then cuts this to "
+            "chunks_shown, so top_k is not what the model sees."
+        ),
+    )
+    chunks_shown: int = Field(
+        5, ge=1, le=25,
+        description="Chunks that survive reranking and reach the model.",
+    )
     provider: Optional[str] = Field(
         None, description="Generation provider. Defaults to the configured one."
     )
@@ -133,7 +143,10 @@ async def answer_question(request: AnswerRequest) -> AnswerResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     retrieval = retriever.retrieve(
-        request.question, strategy=request.strategy, top_k=request.top_k
+        request.question,
+        strategy=request.strategy,
+        top_k=request.top_k,
+        rerank_top_n=request.chunks_shown,
     )
     result = generator.generate(request.question, retrieval.results)
 

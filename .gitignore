@@ -57,3 +57,5 @@ bench_*.log
 chunk_sweep.log
 calibration.log
 report.html
+.playwright-mcp/
+*.png

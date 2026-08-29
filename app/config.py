@@ -48,7 +48,11 @@ class Settings(BaseSettings):
     # withdrawn by their providers — llama-3.3-70b-versatile and
     # gemini-1.5-flash — so they are configuration rather than constants, and
     # the Gemini default is a rolling alias for the same reason.
-    DEFAULT_LLM_PROVIDER: str = 'groq'
+    # Gemini, because that is what every published number was measured on.
+    # A default pointing elsewhere means the demo, the CLI and the
+    # benchmark disagree about which model produced an answer, and that
+    # has already caused one sweep to be discarded.
+    DEFAULT_LLM_PROVIDER: str = 'gemini'
     GROQ_MODEL: str = 'openai/gpt-oss-20b'
     # Pinned rather than a rolling alias. `gemini-flash-latest` was
     # persistently 503 while pinned models of the same generation served

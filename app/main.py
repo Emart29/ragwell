@@ -11,6 +11,7 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Response
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
@@ -107,6 +108,15 @@ if _FRONTEND_DIR.is_dir():
     )
 else:
     logger.info("No frontend directory; serving the API only")
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        """No icon, but a 204 rather than a 404.
+
+        A console error on a demo page reads as something being wrong,
+        and a missing favicon is not.
+        """
+        return Response(status_code=204)
 
     @app.get("/", include_in_schema=False)
     async def root():

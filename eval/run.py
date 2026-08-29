@@ -137,6 +137,7 @@ class BenchmarkRunner:
         verifier: CitationVerifier | None = None,
         long_context: LongContextAnswerer | None = None,
         top_k: int = 8,
+        chunks_shown: int = 5,
         strategy: str = "hybrid",
     ) -> None:
         self.retriever = retriever
@@ -144,6 +145,10 @@ class BenchmarkRunner:
         self.verifier = verifier
         self.long_context = long_context or LongContextAnswerer()
         self.top_k = top_k
+        # What the model actually sees. top_k is the candidate pool the
+        # search returns; reranking cuts it to this before generation, so
+        # recording only top_k overstates the context by a third.
+        self.chunks_shown = chunks_shown
         self.strategy = strategy
 
     def run_rag(
@@ -160,7 +165,10 @@ class BenchmarkRunner:
         for question in questions:
             started = time.perf_counter()
             retrieval = self.retriever.retrieve(
-                question.text, strategy=self.strategy, top_k=self.top_k
+                question.text,
+                strategy=self.strategy,
+                top_k=self.top_k,
+                rerank_top_n=self.chunks_shown,
             )
             result = self.generator.generate(question.text, retrieval.results)
             cell.latency_ms += (time.perf_counter() - started) * 1000

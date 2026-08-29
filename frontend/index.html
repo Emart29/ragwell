@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ragwell — citations you can check</title>
+<style>
+/* One file, no build step, no CDN. The interaction this page exists for is
+   "check a claim in one click", so everything else stays out of the way. */
+:root{
+  --ink:#16181d; --muted:#6b7280; --faint:#9ca3af;
+  --bg:#fbfbfc; --panel:#fff; --line:#e5e7eb;
+  --accent:#24417a; --good:#1a7f37; --bad:#b3261e; --warn:#9a6700;
+  --mark:#fff3bf; --radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--ink:#e8eaed;--muted:#9aa0a6;--faint:#6b7280;--bg:#131417;--panel:#1a1c21;
+    --line:#2c2f36;--accent:#8ab4f8;--good:#5bb974;--bad:#f28b82;--warn:#fdd663;
+    --mark:#4a3f1a}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:820px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+header{margin-bottom:1.75rem}
+h1{font-size:1.5rem;margin:0 0 .3rem;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0;font-size:.94rem}
+.corpus{margin:.7rem 0 0;font-size:.83rem;color:var(--faint);
+  border-left:2px solid var(--line);padding-left:.7rem}
+.corpus a{color:inherit}
+
+form{display:flex;gap:.6rem;margin:1.5rem 0}
+input[type=text]{flex:1;padding:.8rem 1rem;font-size:1rem;font-family:inherit;
+  color:var(--ink);background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius)}
+input[type=text]:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button{padding:.8rem 1.3rem;font-size:1rem;font-family:inherit;font-weight:600;
+  color:#fff;background:var(--accent);border:0;border-radius:var(--radius);
+  cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+
+.examples{display:flex;flex-wrap:wrap;gap:.4rem;margin:-.6rem 0 1.5rem}
+.examples button{background:transparent;color:var(--muted);border:1px solid var(--line);
+  font-weight:400;font-size:.82rem;padding:.32rem .7rem;border-radius:999px}
+.examples button:hover{color:var(--ink);border-color:var(--accent)}
+
+.status{color:var(--muted);font-size:.92rem;padding:1rem 0}
+.error{color:var(--bad)}
+
+.claim{background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);margin:.75rem 0;overflow:hidden}
+.claim-head{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 1.1rem;
+  cursor:pointer}
+.claim-head:hover{background:rgba(127,127,127,.05)}
+.badge{flex:none;margin-top:.15rem;font-size:.68rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;padding:.2rem .45rem;
+  border-radius:4px;white-space:nowrap}
+.badge.ok{color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+.badge.no{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.badge.unknown{color:var(--muted);background:rgba(127,127,127,.12)}
+.claim-text{flex:1}
+.source{display:block;margin-top:.4rem;font-size:.83rem;color:var(--muted)}
+.chev{flex:none;color:var(--faint);transition:transform .15s;margin-top:.2rem}
+.claim[open] .chev{transform:rotate(90deg)}
+
+.evidence{border-top:1px solid var(--line);padding:1rem 1.1rem;
+  background:rgba(127,127,127,.03)}
+.evidence h3{margin:0 0 .5rem;font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--muted);font-weight:600}
+.chunk{font-size:.9rem;line-height:1.7;white-space:pre-wrap;word-break:break-word;
+  max-height:19rem;overflow:auto}
+mark{background:var(--mark);color:inherit;padding:.08em .15em;border-radius:2px}
+.judge{margin-top:.7rem;font-size:.85rem;color:var(--muted)}
+.missing-quote{color:var(--bad);font-size:.85rem;margin-top:.6rem}
+
+.declined{background:var(--panel);border:1px solid var(--line);
+  border-left:3px solid var(--warn);border-radius:var(--radius);padding:1.1rem}
+.declined strong{display:block;margin-bottom:.35rem}
+
+.meta{display:flex;flex-wrap:wrap;gap:.4rem 1.25rem;margin-top:1.5rem;
+  padding-top:1rem;border-top:1px solid var(--line);
+  font-size:.83rem;color:var(--muted)}
+.conf{display:inline-flex;align-items:center;gap:.5rem}
+.bar{width:84px;height:6px;border-radius:3px;background:rgba(127,127,127,.2);
+  overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent)}
+.notes{margin:.5rem 0 0;padding-left:1.1rem;font-size:.83rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Citations you can check</h1>
+    <p class="sub">Every claim carries the chunk it came from and the words that
+      support it. Click one to see the passage, with the quote highlighted where
+      it actually appears.</p>
+    <p class="corpus">Answering from the benchmark corpus only: four
+      <a href="https://ndic.gov.ng/resources/publications/" rel="noreferrer">Nigeria
+      Deposit Insurance Corporation</a> annual reports, 2020&#8211;2024. This page
+      demonstrates the measurement rather than accepting documents of your own.</p>
+  </header>
+
+  <form id="ask">
+    <input type="text" id="q" placeholder="Ask about the NDIC annual reports…"
+           autocomplete="off" required minlength="3">
+    <button type="submit" id="go">Ask</button>
+  </form>
+
+  <div class="examples" id="examples"></div>
+  <div id="status" class="status"></div>
+  <div id="out"></div>
+</main>
+
+<script>
+const EXAMPLES = [
+  "What is the maximum deposit insurance coverage per depositor per Deposit Money Bank?",
+  "What is the deposit insurance limit for microfinance bank depositors?",
+  "How does Nigeria's coverage limit compare with Zambia's?",
+  "What were the insured deposits of Deposit Money Banks at end-December 2024?",
+];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g,
+  (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// Whitespace is normalised before matching because a model reflows it when
+// quoting — a line break becomes a space, runs collapse. That is not a
+// fabricated quote and must not be shown as one.
+const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
+
+function highlight(chunkText, quote) {
+  const hay = norm(chunkText), needle = norm(quote);
+  const at = hay.indexOf(needle);
+  if (at === -1) return null;
+
+  // Walk the original text counting normalised characters, so the highlight
+  // lands on the real span rather than on an index from the normalised copy.
+  let seen = 0, start = -1, end = -1, lastWasSpace = false;
+  for (let i = 0; i < chunkText.length; i++) {
+    const isSpace = /\s/.test(chunkText[i]);
+    if (isSpace && lastWasSpace) continue;
+    if (seen === at && start === -1) start = i;
+    if (seen === at + needle.length) { end = i; break; }
+    seen++;
+    lastWasSpace = isSpace;
+  }
+  if (start === -1) return null;
+  if (end === -1) end = chunkText.length;
+  return [chunkText.slice(0, start), chunkText.slice(start, end), chunkText.slice(end)];
+}
+
+function renderClaim(claim, chunks, index) {
+  const cited = claim.chunk_ids.map((id) => chunks[id]).filter(Boolean);
+  const verified = claim.quote_verified;
+  const badge = verified === true ? ["ok", "verified"]
+              : verified === false ? ["no", "unverified"]
+              : ["unknown", "not checked"];
+
+  const where = cited.map((c) => {
+    let loc = esc(c.filename || "source");
+    if (c.page != null) loc += `, p.${c.page}`;
+    if (c.heading) loc += ` — ${esc(c.heading)}`;
+    return loc;
+  }).join("; ") || "chunk not returned";
+
+  const evidence = cited.map((c) => {
+    const split = highlight(c.text, claim.quote);
+    const body = split
+      ? `${esc(split[0])}<mark>${esc(split[1])}</mark>${esc(split[2])}`
+      : esc(c.text);
+    const warn = split ? "" :
+      `<p class="missing-quote">The quoted words were not found in this chunk.
+       That is what "unverified" means: the citation points here and the passage
+       does not contain it.</p>`;
+    return `<h3>${esc(c.filename || "chunk")}${c.page != null ? `, page ${c.page}` : ""}</h3>
+            <div class="chunk">${body}</div>${warn}`;
+  }).join("");
+
+  const judge = claim.entailment
+    ? `<p class="judge"><strong>Judge:</strong> ${esc(claim.entailment)}</p>` : "";
+
+  return `<details class="claim"${index === 0 ? " open" : ""}>
+    <summary class="claim-head">
+      <span class="badge ${badge[0]}">${badge[1]}</span>
+      <span class="claim-text">${esc(claim.text)}
+        <span class="source">${where}</span></span>
+      <span class="chev">▶</span>
+    </summary>
+    <div class="evidence">${evidence}${judge}</div>
+  </details>`;
+}
+
+function render(data) {
+  const chunks = Object.fromEntries((data.chunks || []).map((c) => [c.chunk_id, c]));
+
+  let body;
+  if (data.kind === "insufficient_evidence") {
+    // A decline is an answer, not an error. Shown as a result so a reader can
+    // see the system chose not to guess.
+    body = `<div class="declined"><strong>No answer — the documents do not
+      support one.</strong>${esc(data.missing || "")}</div>`;
+  } else {
+    body = data.claims.map((c, i) => renderClaim(c, chunks, i)).join("");
+  }
+
+  const notes = (data.confidence_notes || [])
+    .map((n) => `<li>${esc(n)}</li>`).join("");
+
+  const firstMark = () => {
+    const mark = $("out").querySelector(".claim[open] mark");
+    if (mark) mark.scrollIntoView({block: "center", behavior: "instant"});
+  };
+
+  $("out").innerHTML = body + `
+    <div class="meta">
+      <span class="conf">confidence
+        <span class="bar"><span style="width:${Math.round(data.confidence * 100)}%"></span></span>
+        ${data.confidence.toFixed(2)}</span>
+      <span>${esc(data.model)}</span>
+      <span>${(data.prompt_tokens || 0).toLocaleString()} prompt tokens</span>
+      <span>${Math.round(data.latency_ms)} ms</span>
+      <span>${(data.chunks || []).length} chunks searched</span>
+    </div>` + (notes ? `<ul class="notes">${notes}</ul>` : "");
+
+  // The first claim renders already open, which fires no toggle event.
+  requestAnimationFrame(firstMark);
+}
+
+// A generation can take a few seconds normally and much longer when the
+// provider is rate limiting, so the request is bounded. Without this a stalled
+// call leaves "Retrieving…" on screen indefinitely with no way out, which is
+// indistinguishable from the page being broken.
+const TIMEOUT_MS = 90_000;
+let inFlight = null;
+
+function setBusy(busy) {
+  $("go").disabled = busy;
+  // The chips were not disabled, so clicking through them while a request was
+  // running stacked one call per click. Thirteen were queued before this.
+  document.querySelectorAll("#examples button").forEach((b) => (b.disabled = busy));
+}
+
+async function ask(question) {
+  if (inFlight) inFlight.abort();
+  const controller = new AbortController();
+  inFlight = controller;
+  const timer = setTimeout(() => controller.abort("timeout"), TIMEOUT_MS);
+
+  $("q").value = question;
+  $("out").innerHTML = "";
+  $("status").className = "status";
+  $("status").textContent = "Retrieving and answering…";
+  setBusy(true);
+  try {
+    const res = await fetch("/api/answer", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({question, top_k: 8, verify: true}),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail.detail || `request failed (${res.status})`);
+    }
+    $("status").textContent = "";
+    render(await res.json());
+  } catch (err) {
+    if (err.name === "AbortError" && controller.signal.reason !== "timeout") {
+      return;  // superseded by a newer question; the newer one owns the status
+    }
+    $("status").className = "status error";
+    $("status").textContent = err.name === "AbortError"
+      ? `No reply within ${TIMEOUT_MS / 1000}s. The provider may be rate limiting.`
+      : String(err.message || err);
+  } finally {
+    clearTimeout(timer);
+    if (inFlight === controller) { inFlight = null; setBusy(false); }
+  }
+}
+
+$("examples").innerHTML = EXAMPLES
+  .map((q, i) => `<button type="button" data-i="${i}">${esc(
+    q.length > 58 ? q.slice(0, 55) + "…" : q)}</button>`).join("");
+$("examples").addEventListener("click", (e) => {
+  const button = e.target.closest("button");
+  if (button) ask(EXAMPLES[button.dataset.i]);
+});
+// Scroll the highlight into view when a claim opens. Without this the
+// passage opens at its top and the quote is somewhere below the fold, so a
+// reader has to hunt for the words the claim rests on — which is the work
+// this page exists to remove.
+document.addEventListener("toggle", (e) => {
+  const claim = e.target.closest(".claim");
+  if (!claim || !claim.open) return;
+  const mark = claim.querySelector("mark");
+  if (mark) mark.scrollIntoView({block: "center", behavior: "instant"});
+}, true);
+
+$("ask").addEventListener("submit", (e) => {
+  e.preventDefault();
+  ask($("q").value.trim());
+});
+</script>
+</body>
+</html>

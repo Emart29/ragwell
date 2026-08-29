@@ -3,7 +3,9 @@
     "reports": 2,
     "top_k": 8,
     "model": "gemini/gemini-3.5-flash-lite",
-    "elapsed_seconds": 319.9
+    "elapsed_seconds": 319.9,
+    "chunks_shown": 5,
+    "chunks_shown_note": "top_k is the candidate pool the search returns; reranking cut it to chunks_shown before generation. Recorded after the fact: the runs used the retriever default of 5, and the earlier metadata named only top_k."
   },
   "cells": [
     {
