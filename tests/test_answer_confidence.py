@@ -201,3 +201,54 @@ class TestCalibration:
             ScoredOutcome(0.85, False) for _ in range(10)
         ])
         assert over.gap > 0  # positive means overconfident
+
+
+class TestCalibrationPersistence:
+    """A saved run keeps the raw outcomes, not only the binned curve.
+
+    Bin edges are a presentation choice. A reader who disagrees with mine
+    should be able to re-bin the same data rather than re-run the measurement,
+    and a change to the binning should apply to old runs instead of leaving
+    them frozen in whatever shape they were written with.
+    """
+
+    def _outcomes(self):
+        return [
+            ScoredOutcome(0.85, True, question_id="a"),
+            ScoredOutcome(0.85, False, question_id="b"),
+            ScoredOutcome(0.45, False, question_id="c"),
+            ScoredOutcome(0.0, True, question_id="d", declined=True),
+        ]
+
+    def test_a_run_survives_a_round_trip(self, tmp_path):
+        from app.calibration_io import load_outcomes, save_outcomes
+
+        outcomes = self._outcomes()
+        path = tmp_path / "calibration.json"
+        save_outcomes(outcomes, build_curve(outcomes), path, {"repeats": 3})
+
+        restored, curve = load_outcomes(path)
+        assert len(restored) == len(outcomes)
+        assert curve.total == 3  # the decline is excluded
+
+    def test_the_raw_outcomes_are_kept(self, tmp_path):
+        import json
+
+        from app.calibration_io import save_outcomes
+
+        outcomes = self._outcomes()
+        path = tmp_path / "calibration.json"
+        save_outcomes(outcomes, build_curve(outcomes), path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        assert len(payload["outcomes"]) == 4
+        assert {o["question_id"] for o in payload["outcomes"]} == {"a", "b", "c", "d"}
+
+    def test_the_curve_is_rebuilt_rather_than_read(self, tmp_path):
+        """So a later change to the bin edges applies to a run saved today."""
+        from app.calibration_io import load_outcomes, save_outcomes
+
+        outcomes = self._outcomes()
+        path = tmp_path / "calibration.json"
+        save_outcomes(outcomes, build_curve(outcomes), path)
+        _, curve = load_outcomes(path)
+        assert sum(b.count for b in curve.bins) == curve.total

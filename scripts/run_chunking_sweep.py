@@ -53,11 +53,19 @@ def main() -> int:
             "times without spending an afternoon."
         ),
     )
+    parser.add_argument(
+        "--provider", default="gemini",
+        help=(
+            "Generation provider. Defaults to gemini to match the main "
+            "benchmark: a chunking result measured on a different model "
+            "from the accuracy result cannot be read alongside it."
+        ),
+    )
     parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument("--out", default="chunking_results.json")
     args = parser.parse_args()
 
-    generator = AnswerGenerator()
+    generator = AnswerGenerator(provider_name=args.provider)
     verifier = CitationVerifier(judge_provider=None)
     present = set(ORDERED[: args.reports])
     questions = questions_for(0, present)
