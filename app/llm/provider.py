@@ -21,6 +21,7 @@ behaviour is unchanged. New code should use ``get_named_provider`` and handle
 from __future__ import annotations
 
 import random
+import re
 import time
 from typing import Optional
 
@@ -56,11 +57,40 @@ def is_transient(error: str) -> bool:
     return any(marker in lowered for marker in TRANSIENT_MARKERS)
 
 
+#: Longest a provider may ask us to wait before we give up rather than block.
+#: A token-per-minute ceiling clears in under a minute; anything asking for
+#: much longer is a daily quota that waiting will not fix.
+MAX_HONOURED_DELAY = 90.0
+
+_RETRY_DELAY = re.compile(
+    r"(?:retry in|retrydelay['\"]?\s*[:=]\s*['\"]?)\s*([\d.]+)\s*s", re.I
+)
+
+
+def requested_delay(error: str) -> float | None:
+    """The wait the provider asked for, if it named one.
+
+    Providers say how long to wait and the number is usually right. Guessing
+    instead is how a benchmark loses cells to a limit that would have cleared:
+    an exponential backoff topping out at eight seconds gives up on a ceiling
+    whose own error message says twenty-seven.
+    """
+    match = _RETRY_DELAY.search(error)
+    if not match:
+        return None
+    try:
+        return min(float(match.group(1)), MAX_HONOURED_DELAY)
+    except ValueError:
+        return None
+
+
 def retry_with_backoff(call, attempts: int, label: str):
     """Run ``call``, retrying only failures that retrying can fix.
 
-    Jittered because a benchmark runs many of these side by side, and a fixed
-    backoff would synchronise them into the same retry moment.
+    The wait is what the provider asked for where it said, and an exponential
+    backoff otherwise. Jittered either way, because a benchmark runs many of
+    these side by side and a fixed backoff synchronises them onto the same
+    retry moment.
     """
     last: Exception | None = None
     for attempt in range(1, attempts + 1):
@@ -70,10 +100,15 @@ def retry_with_backoff(call, attempts: int, label: str):
             last = exc
             if not is_transient(str(exc)) or attempt == attempts:
                 raise
-            wait = min(2 ** (attempt - 1), 8) * (0.5 + random.random())
+            asked = requested_delay(str(exc))
+            if asked is not None:
+                wait = asked + random.random()
+            else:
+                wait = min(2 ** (attempt - 1), 8) * (0.5 + random.random())
             logger.warning(
-                "%s transient failure, retrying in %.1fs (attempt %d/%d)",
+                "%s transient failure, retrying in %.1fs (attempt %d/%d)%s",
                 label, wait, attempt, attempts,
+                " as requested" if asked is not None else "",
             )
             time.sleep(wait)
     raise last  # unreachable; kept so the type is honest

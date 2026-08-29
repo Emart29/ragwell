@@ -12,7 +12,13 @@ import pytest
 
 from app.answer.contract import Claim, GroundedAnswer, InsufficientEvidence
 from app.answer.schema import for_gemini, gemini_answer_schema, strict_answer_schema
-from app.llm.provider import GenerationError, is_transient, retry_with_backoff
+from app.llm.provider import (
+    MAX_HONOURED_DELAY,
+    GenerationError,
+    is_transient,
+    requested_delay,
+    retry_with_backoff,
+)
 from app.longcontext.stuff import RESERVED_TOKENS, CorpusFit, LongContextAnswerer
 from app.retrieval.types import SearchResult
 
@@ -212,3 +218,41 @@ class TestBothArmsOnOneModel:
         groq_schema, _ = strict_answer_schema()
         assert "additionalProperties" in str(groq_schema)
         assert "additionalProperties" not in str(gemini_answer_schema())
+
+
+class TestHonouringTheRequestedDelay:
+    """Providers say how long to wait, and the number is usually right.
+
+    Guessing instead is how a run loses cells to a limit that would have
+    cleared: an exponential backoff topping out at eight seconds gives up on a
+    ceiling whose own error message asks for twenty-seven, and the loss then
+    looks like the model being unable to answer.
+    """
+
+    def test_a_named_delay_is_read(self):
+        assert requested_delay("Please retry in 27.117175799s.") == pytest.approx(27.117, abs=0.01)
+
+    def test_the_structured_field_is_read_too(self):
+        assert requested_delay("'retryDelay': '13s'") == 13.0
+
+    def test_no_named_delay_falls_back_to_backoff(self):
+        assert requested_delay("429 rate limit reached") is None
+
+    def test_an_absurd_delay_is_capped(self):
+        """A wait measured in hours is a daily quota, and waiting will not fix
+        it. Better to fail visibly than to block."""
+        assert requested_delay("Please retry in 4000s.") == MAX_HONOURED_DELAY
+
+    def test_the_retry_waits_what_was_asked(self, monkeypatch):
+        waits = []
+        monkeypatch.setattr("app.llm.provider.time.sleep", waits.append)
+        calls = []
+
+        def limited():
+            calls.append(1)
+            if len(calls) < 2:
+                raise GenerationError("429 exhausted. Please retry in 27s.")
+            return "ok"
+
+        assert retry_with_backoff(limited, attempts=3, label="test") == "ok"
+        assert 27 <= waits[0] <= 29

@@ -123,6 +123,16 @@ class AnswerScore:
     #: True when the deterministic check could not settle it and a judge ran.
     judged: bool = False
 
+    def __post_init__(self) -> None:
+        # Category arrives as a bare string when a saved run is read back, and
+        # Category is a str-Enum, so `==` still holds while `is` quietly does
+        # not. Every rate that filters by category then matches nothing: trap
+        # rate and overreach read as zero, and correctness counts the ABSENT
+        # questions in its denominator. The live numbers were right and the
+        # ones loaded from disk were not, which is the worst way round.
+        if not isinstance(self.category, Category):
+            self.category = Category(self.category)
+
     @property
     def declined_correctly(self) -> bool:
         return self.declined and self.category is Category.ABSENT

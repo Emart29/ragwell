@@ -236,3 +236,44 @@ class TestWordFactsRespectBoundaries:
 
     def test_trailing_punctuation_does_not_prevent_a_match(self):
         assert contains_fact("paid within four days.", "four days")
+
+
+class TestSurvivingARoundTrip:
+    """A saved run is read back by the report. Category is a str-Enum, so `==`
+    survives JSON and `is` does not — and every rate here filters by category.
+    Loaded from disk, trap rate and overreach read as zero while the live
+    numbers were correct, which is the worst way round to be wrong."""
+
+    def test_a_string_category_becomes_the_enum(self):
+        score = AnswerScore(question_id="q", category="misleading", declined=False)
+        assert score.category is Category.MISLEADING
+
+    def test_rates_survive_a_json_round_trip(self):
+        import json
+        from dataclasses import asdict
+
+        original = Scoreboard(scores=[
+            score_answer(question(id="a"), answer("It is N500,000.")),
+            score_answer(
+                question(id="b", category=Category.ABSENT, must_contain=(),
+                         must_not_contain=(), source_files=()),
+                declined(),
+            ),
+        ])
+        restored = Scoreboard(scores=[
+            AnswerScore(**s) for s in json.loads(json.dumps(
+                [asdict(s) for s in original.scores], default=str
+            ))
+        ])
+        assert restored.trap_rate == original.trap_rate == 1.0
+        assert restored.decline_recall == original.decline_recall == 1.0
+        assert restored.correctness == original.correctness
+
+    def test_absent_questions_stay_out_of_the_correctness_denominator(self):
+        """The bug this guards: with a string category, `is not Category.ABSENT`
+        is true for everything, so declines counted as wrong answers."""
+        board = Scoreboard(scores=[
+            AnswerScore(question_id="a", category="direct", declined=False, correct=True),
+            AnswerScore(question_id="b", category="absent", declined=True, correct=None),
+        ])
+        assert board.correctness == 1.0
