@@ -1,6 +1,8 @@
 # Ragwell
 
-A production-ready Retrieval-Augmented Generation (RAG) pipeline with multiple search strategies, semantic chunking, and real-time document processing. Built with FastAPI, ChromaDB, and Jina AI embeddings.
+A Retrieval-Augmented Generation pipeline with five search strategies, semantic chunking, and **citations that are verified rather than emitted** — every claim carries the chunk it came from and the words that support it, checked by string containment before you see it.
+
+Built with FastAPI, ChromaDB and Jina AI embeddings, and benchmarked against long context on four regulatory annual reports.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
@@ -11,6 +13,137 @@ A production-ready Retrieval-Augmented Generation (RAG) pipeline with multiple s
 ## Overview
 
 Ragwell is a backend API service that makes it easy to ingest documents, generate embeddings, and run semantic search across your data. It supports five search strategies — from fast keyword matching to LLM-powered hypothetical document expansion — and is built for production use with rate limiting, exponential backoff, and connection pooling out of the box.
+
+---
+
+## Citations you can check
+
+Ragwell retrieves. This layer answers, and every claim it makes carries the
+chunk it came from and the words that support it — checked, not merely emitted.
+
+```
+VERIFIED  The deposit insurance limit for microfinance bank depositors was
+          increased from N200,000 to N2,000,000 per depositor per MFB.
+          2024-Annual-Report.pdf, p.27
+          quote: "At the same time, the limit for MFBs was increased from
+                  N200,000 to N2,000,000 per depositor per MFB"
+```
+
+Two things make that answer harder than it looks. Three of the four reports in
+the corpus state the **superseded** N200,000 limit, and state it as plainly as
+the current report states the new one. And the quote is verified by string
+containment against the cited chunk — no second model needed to check it.
+
+### What was measured
+
+Four Nigeria Deposit Insurance Corporation annual reports (2020–2024), sixteen
+hand-labelled questions, both arms on `gemini-3.5-flash-lite`, 29 August 2026.
+Raw results are committed as `benchmark_results.json`, `chunking_results.json`
+and `calibration_results.json`.
+
+**Retrieval costs a flat rate; long context scales with the corpus.**
+
+| corpus | retrieval | long context | tokens/question, retrieval | tokens/question, long context |
+|---|---|---|---|---|
+| 1 report | 100% | 100% | 2,654 | 59,544 |
+| 2 reports | 88% | 50% | 2,563 | 115,621 |
+| 3 reports | 75% | 86% | 2,557 | 181,981 |
+| 4 reports | 88% | 62% | 2,529 | 319,771 |
+
+At four reports long context costs **126×** more per question for the same
+question. Retrieval's cost does not move as the corpus grows; that is the whole
+point of retrieval and it is the one result here that is arithmetic rather than
+sampling.
+
+**Read the accuracy column with its n.** Ten questions per cell means one
+question is ten points, so a gap that size is noise. The accuracy comparison is
+inconclusive at this sample size and is reported as such.
+
+**Long context does not solve superseded documents.** This is the result that
+surprised me. Seeing all four reports at once ought to let a model resolve a
+contradiction that retrieval, seeing a slice, cannot. It does not: long context
+stated a superseded figure on **67%** of the misleading questions at two of the
+four corpus sizes, against retrieval's 33%. An earlier, incomplete run suggested
+the opposite and I nearly published it.
+
+**Smaller chunks buy citation precision for free.**
+
+| chunk size | correct | tokens a reader must check |
+|---|---|---|
+| 128 | 75% | 103 |
+| 256 | 75% | 193 |
+| 512 | 88% | 401 |
+| 1024 | 75% | 819 |
+
+A citation at 1024 tokens asks the reader to check **7.9×** the text of one at
+128, and accuracy is flat across the sweep within one question.
+
+**The confidence score is not a probability.** Expected calibration error 15.1%
+over 45 outcomes. It is well behaved at the top (+5% in both high bins) and badly
+*under*confident at the bottom: answers scored 0.4–0.6 were right every time. No
+threshold pays for itself — the best available reaches 93% accuracy by declining
+19 of 33 answers to avoid roughly 2 wrong ones. So the fallback threshold is left
+unset, on the evidence, and the curve is published instead of a number.
+
+### Using it
+
+```bash
+python eval/fetch_corpus.py          # download the corpus (~450MB, checksummed)
+python scripts/run_benchmark.py      # the matrix, both arms, four corpus sizes
+python scripts/run_chunking_sweep.py # chunk size against citation precision
+python scripts/run_calibration.py    # confidence against measured accuracy
+python scripts/build_report.py       # one self-contained HTML file
+```
+
+Ask a question and see the evidence:
+
+```bash
+python scripts/ask.py "What is the maximum deposit insurance coverage?" --judge
+```
+
+Or over HTTP:
+
+```bash
+curl -X POST localhost:8000/api/answer \
+  -H "Content-Type: application/json" \
+  -d '{"question": "...", "chunks_shown": 5}'
+```
+
+`top_k` is the candidate pool the search returns; **`chunks_shown` is what
+reaches the model** after reranking. They are named separately because conflating
+them overstates the context by a third, which the earlier metadata in this repo
+did.
+
+### How a citation is checked
+
+Three rungs, in increasing cost, each reported separately so the cheap ones can
+be counted alone:
+
+1. **Quote containment** — is the quote really in the cited chunk? Free,
+   deterministic, and whitespace-normalised because models reflow it when quoting.
+2. **Lexical overlap** — do the claim's content words appear in the chunk?
+   Catches a genuine quote supporting an overreaching claim.
+3. **Entailment** — does the chunk support the claim? One model call, and the
+   only rung that costs anything.
+
+The entailment judge is a model judging a model, so its agreement with hand
+labels is measured before any number it produces is quoted: **8 of 8** on the
+labelled set, zero false supports, stable across three runs. Eight cases is small
+and is quoted that way.
+
+### Honest limits
+
+- **Provider-, model- and date-specific.** Measured on 29 August 2026. Two models
+  used earlier in this work were withdrawn by their provider mid-benchmark.
+- **Ten questions per cell.** Strong enough for the cost and trap findings, not
+  for accuracy differences.
+- **The corpus is one regulator's annual reports.** Dense, numeric, and English.
+  A corpus of prose would behave differently.
+- **The scripts reset the index.** Each measurement script clears the store and
+  re-ingests at the size it needs, so run one and the demo corpus is gone until
+  you re-ingest.
+- **ChromaDB does not see another process's writes.** Ingest, then restart the
+  server, or it will answer from a stale view.
 
 ---
 
@@ -99,6 +232,9 @@ graph TB
 - **Semantic chunking** — Recursive and semantic chunking with quality validation
 - **Background processing** — Async document ingestion with real-time status tracking
 - **Production-ready** — Rate limiting, exponential backoff, and connection pooling
+- **Verified citations** — every claim cites a chunk and quotes it verbatim, checked three ways
+- **Declines when it should** — "the corpus does not support an answer" is a first-class response, not an error
+- **Benchmarked against long context** — retrieval versus stuffing the whole corpus, measured on cost and on correctness
 
 ---
 
@@ -111,7 +247,7 @@ graph TB
 | Relational DB | SQLite with FTS5 |
 | Embeddings | Jina AI Embeddings v3 |
 | Reranking | Jina Reranker v2 |
-| LLM | Groq (Llama 3) |
+| LLM | Groq and Google Gemini, named explicitly and never substituted |
 | Chunking | LangChain Text Splitters |
 
 ---
