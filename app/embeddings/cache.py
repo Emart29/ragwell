@@ -66,10 +66,19 @@ class EmbeddingCache:
             "hit_rate": round(hit_rate, 4),
         }
 
-    def clear(self):
-        self._memory_cache.clear()
+    def reset_stats(self):
+        """Zero the counters and keep the cached embeddings.
+
+        Distinct from clear(): the hit rate is reported per document, so the
+        counters restart for each one, but discarding the vectors as well would
+        mean paying to embed identical text again.
+        """
         self._hits = 0
         self._misses = 0
+
+    def clear(self):
+        self._memory_cache.clear()
+        self.reset_stats()
 
     def size(self) -> int:
         return len(self._memory_cache)

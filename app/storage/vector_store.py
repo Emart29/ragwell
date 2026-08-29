@@ -1,6 +1,7 @@
 """ChromaDB vector storage for embeddings."""
 from pathlib import Path
 from typing import Optional
+import hashlib
 import uuid
 import chromadb
 from chromadb.config import Settings
@@ -92,6 +93,25 @@ class VectorStore:
         logger.info(f"Document stored: {document_id} ({filename})")
         return document_id
     
+    @staticmethod
+    def chunk_id_for(document_id: str, chunk_index: int, text: str) -> str:
+        """Derive a chunk's id from its content.
+
+        Deliberately not a random UUID. A citation points at a chunk id, so an
+        id that changes when a document is re-ingested silently invalidates
+        every citation already stored against it — and re-ingestion is routine
+        when comparing chunking strategies or rebuilding an index.
+
+        Hashing the document, the position, and the text means the same content
+        keeps the same id forever, and edited text correctly gets a new one.
+        """
+        digest = hashlib.sha256(
+            f"{document_id}:{chunk_index}:{text}".encode("utf-8")
+        ).hexdigest()
+        # Trimmed to 36 characters to fit the existing String(36) column, which
+        # was sized for a UUID. 32 hex characters is 128 bits of the digest.
+        return digest[:32]
+
     def store_chunks(
         self,
         document_id: str,
@@ -119,10 +139,24 @@ class VectorStore:
         chroma_metadatas = []
         
         with DatabaseManager() as db:
+            # Chunk ids are derived from content, so re-ingesting a document
+            # produces the same ids and would collide on the primary key.
+            # Clearing first makes re-ingestion idempotent rather than an
+            # error, which is what re-chunking a corpus needs.
+            existing = db.query(Chunk).filter(
+                Chunk.document_id == document_id
+            ).delete()
+            if existing:
+                logger.info(
+                    f"Replacing {existing} existing chunks for {document_id}"
+                )
+
             for i, (chunk, embedding, quality) in enumerate(
                 zip(chunks, embeddings, quality_scores)
             ):
-                chunk_id = str(uuid.uuid4())
+                chunk_id = self.chunk_id_for(
+                    document_id, chunk.chunk_index, chunk.text
+                )
                 chunk_ids.append(chunk_id)
                 
                 # Store in SQLite
@@ -132,7 +166,10 @@ class VectorStore:
                     chunk_index=chunk.chunk_index,
                     text=chunk.text,
                     token_count=chunk.token_count,
-                    chunk_strategy='recursive',  # Or detect from chunk type
+                    chunk_strategy=getattr(
+                        chunk, 'chunk_strategy', None
+                    ) or type(chunk).__name__.replace('Chunk', '').lower()
+                    or 'recursive',
                     page_number=chunk.source_page,
                     heading_context=chunk.heading_context,
                     quality_score=quality,

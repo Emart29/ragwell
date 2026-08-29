@@ -1,3 +1,4 @@
+from app.config import settings
 """Text embedding using Jina Embeddings API.
 
 Replaces local sentence-transformers to avoid OOM crashes on Windows.
@@ -9,6 +10,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from app.embeddings.cache import EmbeddingCache
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -67,11 +69,16 @@ class Embedder:
     def __init__(self):
         if self._initialized:
             return
-        self.api_key = os.getenv("JINA_API_KEY")
+        self.api_key = settings.JINA_API_KEY
         if not self.api_key:
             raise ValueError(
                 "JINA_API_KEY not set. Get a free key at https://jina.ai/embeddings/"
             )
+        # One cache per process, alongside the singleton. Re-embedding text
+        # that has not changed is the most avoidable cost in the pipeline:
+        # comparing chunking strategies re-ingests the same corpus repeatedly,
+        # and identical chunks fall out of every strategy.
+        self._cache = EmbeddingCache()
         self.model = "jina-embeddings-v3"
         self.dimensions = 384  # match existing ChromaDB collection
         self._headers = {
@@ -95,6 +102,17 @@ class Embedder:
         
         Includes exponential backoff for rate limiting (429 errors).
         """
+        if not texts:
+            return []
+
+        # Served from cache where possible; only the misses reach the API.
+        embeddings, _ = self._cache.get_or_embed(
+            texts, self.model, self._embed_batch_uncached
+        )
+        return embeddings
+
+    def _embed_batch_uncached(self, texts: list[str]) -> list[list[float]]:
+        """Embed every text given, with no cache lookup. Called on misses."""
         if not texts:
             return []
 
@@ -152,8 +170,19 @@ class Embedder:
                     all_embeddings.extend(embeddings)
                     break  # Success, exit retry loop
                     
-                except requests.exceptions.Timeout as e:
-                    logger.warning("Jina API timeout (attempt %d/%d): %s", attempt + 1, MAX_RETRIES, e)
+                except (
+                    requests.exceptions.Timeout,
+                    requests.exceptions.ConnectionError,
+                ) as e:
+                    # A dropped connection or a DNS failure is transient and
+                    # belongs in this loop. Previously only timeouts were
+                    # retried and a ConnectionError fell through to the branch
+                    # below, which re-raises: one blip mid-ingestion then ended
+                    # a run that had already spent half an hour.
+                    logger.warning(
+                        "Jina API connection problem (attempt %d/%d): %s",
+                        attempt + 1, MAX_RETRIES, e,
+                    )
                     if attempt == MAX_RETRIES - 1:
                         raise
                     time.sleep(RETRY_DELAY * (2 ** attempt))
@@ -199,7 +228,13 @@ class Embedder:
     # ------------------------------------------------------------------
 
     def get_cache_stats(self) -> dict:
-        return {"cache_hits": 0, "cache_misses": 0, "total_requests": 0, "hit_rate": 0.0}
+        """Hits, misses, and hit rate since the last reset."""
+        return self._cache.get_stats()
 
     def reset_cache_stats(self):
-        pass
+        """Zero the counters without discarding what has been cached.
+
+        The pipeline reports a hit rate per document, so the counters restart
+        per document while the embeddings themselves persist for the process.
+        """
+        self._cache.reset_stats()

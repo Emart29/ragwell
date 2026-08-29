@@ -286,8 +286,9 @@ class TestRetriever:
         assert 'keyword' in strategies
         assert 'hybrid' in strategies
         
-        # HyDE and expanded only if Gemini key available
-        if retriever.query_expansion.gemini_available:
+        # HyDE and expanded need a generation provider; the retriever owns
+        # that question now, so ask it rather than a removed attribute.
+        if retriever._llm_available():
             assert 'hyde' in strategies
             assert 'expanded' in strategies
     
@@ -295,7 +296,7 @@ class TestRetriever:
         """Test HyDE falls back when no Gemini key."""
         retriever = Retriever()
         
-        if not retriever.query_expansion.gemini_available:
+        if not retriever._llm_available():
             result = retriever.retrieve(
                 "test",
                 strategy='hyde',

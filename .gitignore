@@ -45,3 +45,17 @@ demo_output.txt
 # OS
 Thumbs.db
 .DS_Store
+
+# The NDIC corpus is ~450MB of PDFs, reconstructed by eval/fetch_corpus.py
+# from a committed manifest with checksums.
+eval/corpus_ndic/*.pdf
+eval/extracted/
+
+# Run logs are noise; the results file is the evidence and is committed,
+# so a reader can check any number without spending a day of API quota.
+bench_*.log
+chunk_sweep.log
+calibration.log
+report.html
+.playwright-mcp/
+*.png

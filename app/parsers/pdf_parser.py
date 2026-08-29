@@ -1,6 +1,8 @@
 """PDF document parser using PyMuPDF and pdfplumber."""
 import fitz  # PyMuPDF
 import pdfplumber
+
+from app.config import settings
 from pathlib import Path
 from datetime import datetime
 from app.parsers.base import BaseParser, ParsedDocument
@@ -59,8 +61,14 @@ class PDFParser(BaseParser):
             
             doc.close()
             
-            # Extract tables with pdfplumber
-            tables = self._extract_tables(file_path)
+            # Table extraction is opt-in. pdfplumber walks every page a
+            # second time and dominates parse time on a long document,
+            # while nothing downstream reads what it produces.
+            tables = (
+                self._extract_tables(file_path)
+                if settings.EXTRACT_PDF_TABLES
+                else []
+            )
             
             if not full_text.strip():
                 logger.warning(f"Extracted text from {file_path} is empty. Scanned PDF?")
