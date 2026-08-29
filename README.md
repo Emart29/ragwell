@@ -25,18 +25,25 @@ Both halves are measured. The [benchmark](#what-was-measured) puts retrieval aga
 Ragwell retrieves. This layer answers, and every claim it makes carries the
 chunk it came from and the words that support it — checked, not merely emitted.
 
-```
-VERIFIED  The deposit insurance limit for microfinance bank depositors was
-          increased from N200,000 to N2,000,000 per depositor per MFB.
-          2024-Annual-Report.pdf, p.27
-          quote: "At the same time, the limit for MFBs was increased from
-                  N200,000 to N2,000,000 per depositor per MFB"
-```
+![A verified claim with its quote highlighted in the source passage](docs/screenshots/verified-answer.png)
 
 Two things make that answer harder than it looks. Three of the four reports in
 the corpus state the **superseded** N200,000 limit, and state it as plainly as
 the current report states the new one. And the quote is verified by string
 containment against the cited chunk — no second model needed to check it.
+
+The badge is not decoration. It records that those words were found in the
+chunk the claim cites, by a comparison you can repeat yourself.
+
+### It can also decline
+
+A system with no way to say "the documents do not support an answer" will say
+something else instead, and that something is the failure everyone worries
+about. So the decline is a first-class response, not an error path:
+
+![A declined answer, with confidence marked as not applicable](docs/screenshots/declined-answer.png)
+
+![Asking a question, seeing the answer verified, then a question the corpus cannot answer](docs/screenshots/walkthrough.gif)
 
 ### What was measured
 
