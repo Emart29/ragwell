@@ -12,7 +12,11 @@ Built with FastAPI, ChromaDB and Jina AI embeddings, and benchmarked against lon
 
 ## Overview
 
-Ragwell is a backend API service that makes it easy to ingest documents, generate embeddings, and run semantic search across your data. It supports five search strategies — from fast keyword matching to LLM-powered hypothetical document expansion — and is built for production use with rate limiting, exponential backoff, and connection pooling out of the box.
+Ragwell ingests documents, embeds them, and searches across them with five strategies — from keyword matching to hypothetical document expansion. On top of that sits an answer layer that does the part most RAG systems skip: it makes every claim quote its source verbatim, then **checks that the quote is really there** before you see it.
+
+That check is a string comparison, so it costs nothing and runs on every answer rather than on a sample. The system can also decline — "the corpus does not support an answer" is a first-class response, because a system with no way to say that will say something else instead.
+
+Both halves are measured. The [benchmark](#what-was-measured) puts retrieval against long context on four regulatory annual reports and reports what each costs and where each gets things wrong.
 
 ---
 
@@ -92,8 +96,12 @@ python eval/fetch_corpus.py          # download the corpus (~450MB, checksummed)
 python scripts/run_benchmark.py      # the matrix, both arms, four corpus sizes
 python scripts/run_chunking_sweep.py # chunk size against citation precision
 python scripts/run_calibration.py    # confidence against measured accuracy
-python scripts/build_report.py       # one self-contained HTML file
+python scripts/build_report.py --out docs/report.html   # one self-contained HTML file
 ```
+
+The three results files are committed, so `build_report.py` rebuilds the report
+from the measured data **without an API key and without the corpus**. Every
+number quoted above can be checked that way.
 
 Ask a question and see the evidence:
 
@@ -151,90 +159,98 @@ and is quoted that way.
 
 ```mermaid
 graph TB
-    subgraph Client
-        CLI[CLI / Demo Script]
-        API_CLIENT[API Client]
+    subgraph Clients
+        UI[Answer UI]
+        ASK[ask.py CLI]
+        BENCH[Benchmark harness]
     end
 
-    subgraph API Layer
-        FAST[FastAPI Server]
-        INGEST[Ingestion API]
-        QUERY[Query API]
-        DOCS[Document API]
+    subgraph API["API layer"]
+        ANSWER["/api/answer"]
+        VERIFY["/api/answer/id/verify"]
+        QUERY["/api/query"]
+        INGEST["/api/ingest"]
     end
 
-    subgraph Processing Pipeline
-        PARSE[Document Parser]
-        CHUNK[Chunking Engine]
-        VALID[Quality Validator]
-        EMBED[Jina Embeddings]
-        STORE[Storage Layer]
+    subgraph Ingestion
+        PARSE[Parser] --> CHUNK[Chunker]
+        CHUNK --> VALID[Quality validator]
+        VALID --> EMBED[Jina embeddings + cache]
+    end
+
+    subgraph Retrieval["Retrieval — 5 strategies"]
+        VEC[Vector]
+        KEY[Keyword FTS5]
+        HYB[Hybrid]
+        HYDE[HyDE]
+        EXP[Query expansion]
+        RERANK[Jina reranker]
+    end
+
+    subgraph Answer["Answer layer"]
+        CONTRACT["Contract: a claim must cite<br/>a chunk and quote it verbatim"]
+        GEN[Generator]
+        LADDER["Verification ladder<br/>1. quote containment (free)<br/>2. lexical overlap (free)<br/>3. entailment (1 model call)"]
+        CONF["Confidence from evidence<br/>+ calibration curve"]
+        FALLBACK["Fallback: re-query,<br/>widen, or decline"]
     end
 
     subgraph Storage
         SQLITE[(SQLite + FTS5)]
         CHROMA[(ChromaDB)]
-        FS[File System]
     end
 
-    subgraph External APIs
-        JINA[Jina AI Embeddings]
-        JINA_R[Jina Reranker]
-        GROQ[Groq LLM]
+    subgraph Measurement
+        LONGCTX["Long-context arm<br/>same contract, no retrieval"]
+        SCORE["Scorer: correctness, overreach,<br/>trap rate, hallucination"]
+        REPORT[Self-contained HTML report]
     end
 
-    subgraph Search Strategies
-        VEC[Vector Search]
-        KEY[Keyword Search FTS5]
-        HYB[Hybrid Search]
-        HYP[HyDE Search]
-        EXP[Query Expansion]
-    end
-
-    CLI --> FAST
-    API_CLIENT --> FAST
-    FAST --> INGEST
-    FAST --> QUERY
-    FAST --> DOCS
+    UI --> ANSWER
+    ASK --> ANSWER
+    BENCH --> ANSWER
+    BENCH --> LONGCTX
+    ANSWER --> QUERY
+    QUERY --> VEC & KEY & HYB & HYDE & EXP
+    VEC & KEY & HYB & HYDE & EXP --> RERANK
+    RERANK --> GEN
+    CONTRACT --> GEN
+    GEN --> LADDER
+    LADDER --> CONF
+    CONF --> FALLBACK
+    VERIFY --> LADDER
 
     INGEST --> PARSE
-    PARSE --> CHUNK
-    CHUNK --> VALID
-    VALID --> EMBED
-    EMBED --> STORE
-    STORE --> SQLITE
-    STORE --> CHROMA
-    STORE --> FS
-
-    EMBED --> JINA
-    QUERY --> JINA_R
-    QUERY --> GROQ
-
-    QUERY --> VEC
-    QUERY --> KEY
-    QUERY --> HYB
-    QUERY --> HYP
-    QUERY --> EXP
-
+    EMBED --> SQLITE & CHROMA
     VEC --> CHROMA
     KEY --> SQLITE
-    HYB --> CHROMA
-    HYB --> SQLITE
+
+    LONGCTX --> SCORE
+    LADDER --> SCORE
+    SCORE --> REPORT
 ```
+
+The retrieval half is ragwell as it was. The answer layer, the long-context arm
+and the measurement are what the citation work added.
 
 ---
 
 ## Features
 
-- **Multi-format document ingestion** — PDF, DOCX, TXT, CSV, HTML
-- **5 search strategies** — Vector, Keyword (FTS5), Hybrid, HyDE, and Query Expansion
-- **Jina AI integration** — Asymmetric embeddings (query vs. passage) and reranking
-- **Semantic chunking** — Recursive and semantic chunking with quality validation
-- **Background processing** — Async document ingestion with real-time status tracking
-- **Production-ready** — Rate limiting, exponential backoff, and connection pooling
+**The answer layer**
+
 - **Verified citations** — every claim cites a chunk and quotes it verbatim, checked three ways
 - **Declines when it should** — "the corpus does not support an answer" is a first-class response, not an error
-- **Benchmarked against long context** — retrieval versus stuffing the whole corpus, measured on cost and on correctness
+- **Calibrated confidence** — scored from retrieval strength and citation checks, then plotted against measured accuracy rather than asserted
+- **Benchmarked against long context** — retrieval versus sending the whole corpus, measured on cost and on correctness
+
+**The retrieval layer**
+
+- **Multi-format ingestion** — PDF, DOCX, TXT, CSV, HTML, Markdown
+- **5 search strategies** — Vector, Keyword (FTS5), Hybrid, HyDE, Query Expansion
+- **Jina AI integration** — asymmetric embeddings (query vs. passage) and reranking
+- **Semantic chunking** — recursive and semantic, with quality validation
+- **Background processing** — async ingestion with status tracking
 
 ---
 
@@ -254,15 +270,20 @@ graph TB
 
 ## Performance
 
-| Search Strategy | Latency |
+| Operation | Latency |
 |---|---|
-| Keyword (FTS5) | < 15ms |
-| Vector | ~650ms |
-| Hybrid | ~680ms |
+| Keyword search (FTS5) | < 15ms |
+| Vector search | ~650ms |
+| Hybrid search | ~680ms |
 | HyDE | ~2.4s |
-| Query Expansion | ~3.4s |
+| Query expansion | ~3.4s |
+| **Answer with citation checks** | **~1.7–2.6s** |
+| Answer with the entailment judge | ~4s |
 
-Other metrics: document processing ~5s/MB, max relevance score 0.93, 100% data consistency between SQLite and ChromaDB.
+Ingestion runs about 50s for a 262-page PDF. Table extraction is off by default:
+`pdfplumber` walks every page a second time and dominates parse time — roughly
+six minutes against 29 seconds for the text — while nothing downstream reads the
+result. Set `EXTRACT_PDF_TABLES=true` if you need it.
 
 ---
 
@@ -271,8 +292,13 @@ Other metrics: document processing ~5s/MB, max relevance score 0.93, 100% data c
 ### Prerequisites
 
 - Python 3.11+
-- [Jina AI API key](https://jina.ai/embeddings/) — free tier includes 10M tokens
-- [Groq API key](https://console.groq.com/) — free tier available
+- [Jina AI API key](https://jina.ai/embeddings/) — required for embeddings and reranking. Free tier: 10M tokens/month
+- [Google AI Studio key](https://aistudio.google.com/apikey) — required for answering. Free tier, no card
+- [Groq API key](https://console.groq.com/) — optional second provider
+
+Reproducing the benchmark also needs the corpus: four NDIC annual reports,
+about 450MB, downloaded by `python eval/fetch_corpus.py`. The committed results
+can be read and the report rebuilt without it.
 
 ### Installation
 
@@ -296,9 +322,13 @@ Edit `.env` with your API keys:
 
 ```env
 JINA_API_KEY=jina_xxxxxxxxxxxx   # Required — embeddings and reranking
-GROQ_API_KEY=gsk_xxxxxxxxxxxx    # Required — HyDE and query expansion
-# GEMINI_API_KEY=your_key_here   # Optional — alternative LLM
+GEMINI_API_KEY=xxxxxxxxxxxx      # Required — answering. Every published number was measured on it
+GROQ_API_KEY=gsk_xxxxxxxxxxxx    # Optional — second provider, and HyDE/query expansion
 ```
+
+Providers are named and never substituted for one another. An answer produced by
+one model is never attributed to another, because the benchmark compares them and
+a silent fallback would make the comparison meaningless.
 
 ### Start the server
 
@@ -308,13 +338,52 @@ python -m uvicorn app.main:app --port 8000
 
 The API will be running at `http://localhost:8000`. Interactive docs are available at `http://localhost:8000/docs`.
 
-### Run the demo
+### Ask a question and see the evidence
+
+`ask.py` answers from whatever is in the index, so put something there first.
+The quickest way needs no download:
 
 ```bash
 python scripts/demo.py
 ```
 
-This generates sample documents, uploads and processes them, runs queries across all five search strategies, and prints evaluation metrics.
+This generates three sample documents, ingests them, and runs all five search
+strategies with retrieval metrics. It starts its own server on port 8000 — so
+stop the one above first — and it **clears the index** before it begins.
+
+Then, in a second terminal:
+
+```bash
+python scripts/ask.py "What do hybrid search approaches combine?"
+```
+
+```
+  1. [verified] Hybrid search approaches merge vector and keyword results.
+       source: company_report.pdf, p.1  [06482654e493]
+       quote: "Hybrid approaches merge vector and keyword results to leverage
+              the strengths of both methods."
+
+  confidence 0.95
+  citations: 1 claims, quote found 100%, decorative 0%
+```
+
+`[verified]` means the quote was found in the cited chunk by string comparison.
+Add `--judge` to run the entailment rung, `--show-chunks` to print the cited
+text. Open `http://localhost:8000` for the same thing in a browser, where
+clicking a claim highlights its quote in the passage.
+
+To ask against the regulatory corpus the benchmark uses instead:
+
+```bash
+python eval/fetch_corpus.py                    # four NDIC annual reports, ~450MB
+python scripts/run_benchmark.py --sizes 1      # ingests, then measures
+python scripts/ask.py "What is the maximum deposit insurance coverage?" --judge
+```
+
+**Two things to know.** Every measurement script resets the index and re-ingests
+at the size it needs, so running one discards whatever was there. And ChromaDB
+does not see another process's writes — ingest, then restart the server, or it
+will answer from a stale view.
 
 ---
 
