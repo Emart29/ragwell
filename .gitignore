@@ -50,3 +50,6 @@ Thumbs.db
 # from a committed manifest with checksums.
 eval/corpus_ndic/*.pdf
 eval/extracted/
+
+bench_*.log
+benchmark_results.json

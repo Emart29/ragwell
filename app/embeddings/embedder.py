@@ -170,8 +170,19 @@ class Embedder:
                     all_embeddings.extend(embeddings)
                     break  # Success, exit retry loop
                     
-                except requests.exceptions.Timeout as e:
-                    logger.warning("Jina API timeout (attempt %d/%d): %s", attempt + 1, MAX_RETRIES, e)
+                except (
+                    requests.exceptions.Timeout,
+                    requests.exceptions.ConnectionError,
+                ) as e:
+                    # A dropped connection or a DNS failure is transient and
+                    # belongs in this loop. Previously only timeouts were
+                    # retried and a ConnectionError fell through to the branch
+                    # below, which re-raises: one blip mid-ingestion then ended
+                    # a run that had already spent half an hour.
+                    logger.warning(
+                        "Jina API connection problem (attempt %d/%d): %s",
+                        attempt + 1, MAX_RETRIES, e,
+                    )
                     if attempt == MAX_RETRIES - 1:
                         raise
                     time.sleep(RETRY_DELAY * (2 ** attempt))

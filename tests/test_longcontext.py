@@ -191,3 +191,24 @@ class TestTransientRetry:
         with pytest.raises(GenerationError):
             retry_with_backoff(always_down, attempts=2, label="test")
         assert len(calls) == 2
+
+
+class TestBothArmsOnOneModel:
+    """The comparison is retrieval against stuffing. If one arm runs on Groq
+    and the other on Gemini, the headline number conflates that with one model
+    against another, and nothing separates the two afterwards."""
+
+    def test_the_generator_has_a_gemini_path(self):
+        from app.answer.generate import AnswerGenerator
+
+        generator = AnswerGenerator(provider_name="gemini")
+        assert generator.provider.name == "gemini"
+
+    def test_gemini_gets_a_schema_it_accepts(self):
+        """Groq requires additionalProperties on every object; Gemini rejects
+        the key outright. The same contract needs both translations."""
+        from app.answer.schema import gemini_answer_schema, strict_answer_schema
+
+        groq_schema, _ = strict_answer_schema()
+        assert "additionalProperties" in str(groq_schema)
+        assert "additionalProperties" not in str(gemini_answer_schema())

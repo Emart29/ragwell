@@ -234,3 +234,44 @@ class TestProvenance:
         generator._scripted = decline_json()
         result = generator.generate("When?", [CHUNK_A, CHUNK_B])
         assert [r.chunk_id for r in result.retrieved] == ["chunk-a", "chunk-b"]
+
+
+class TestTransientLimitsAreRetried:
+    """A tokens-per-minute ceiling is a pause, not a failure.
+
+    The retry helper existed but was wired only into the long-context arm, so
+    the retrieval arm lost whole benchmark cells to an 8,000 TPM limit that
+    clears in eight seconds — and the loss looked like the model being unable
+    to answer.
+    """
+
+    def test_the_generator_retries_a_rate_limit(self, generator, monkeypatch):
+        calls = []
+
+        def flaky(prompt):
+            calls.append(1)
+            if len(calls) < 2:
+                raise GenerationError("429 rate limit reached on tokens per minute")
+            return answer_json([{
+                "text": "Refunds take 5 to 7 business days.",
+                "chunk_ids": ["chunk-a"],
+                "quote": "The merger completed on 14 March 2019",
+            }])
+
+        monkeypatch.setattr(generator, "_call", flaky)
+        monkeypatch.setattr("app.config.settings.GENERATION_RETRIES", 3)
+        result = generator.generate("When?", [CHUNK_A])
+        assert result.ok
+        assert len(calls) == 2
+
+    def test_a_permanent_failure_is_not_retried(self, generator, monkeypatch):
+        calls = []
+
+        def broken(prompt):
+            calls.append(1)
+            raise GenerationError("400 invalid schema")
+
+        monkeypatch.setattr(generator, "_call", broken)
+        result = generator.generate("When?", [CHUNK_A])
+        assert not result.ok
+        assert len(calls) == 1

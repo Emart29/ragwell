@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     DATABASE_PATH: str = './data/ragwell.db'
     CHROMA_PATH: str = './data/chroma'
     
+    #: Extract tables from PDFs with pdfplumber during parsing.
+    #: Off by default because it is the single most expensive step in the
+    #: pipeline - roughly six minutes on a 262-page report against 29
+    #: seconds for the text itself - and nothing downstream reads the
+    #: result. The tables are carried into document metadata and never
+    #: consulted by chunking, retrieval, or the API. Turn it on when
+    #: something needs them.
+    EXTRACT_PDF_TABLES: bool = False
+
     # Chunking Configuration
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
@@ -45,11 +54,14 @@ class Settings(BaseSettings):
     # persistently 503 while pinned models of the same generation served
     # normally, so the alias buys currency at the cost of availability -
     # a poor trade for a benchmark that has to complete.
-    GEMINI_MODEL: str = 'gemini-3.6-flash'
+    GEMINI_MODEL: str = 'gemini-3.5-flash-lite'
 
     #: Model for the long-context arm. Named separately from GEMINI_MODEL so
     #: the comparison cannot be changed by accident when the default moves.
-    LONG_CONTEXT_MODEL: str = 'gemini-3.6-flash'
+    # The free tier caps gemini-3.6-flash at 20 requests a day, which a
+    # four-size sweep exhausts before it reaches the third size. The lite
+    # model has the headroom to finish a run.
+    LONG_CONTEXT_MODEL: str = 'gemini-3.5-flash-lite'
 
     GENERATION_TEMPERATURE: float = 0.7
     GENERATION_TIMEOUT: float = 30.0

@@ -37,7 +37,11 @@ from app.answer.contract import (
 )
 from app.answer.schema import strict_answer_schema
 from app.config import settings
-from app.llm.provider import GenerationError, get_named_provider
+from app.llm.provider import (
+    GenerationError,
+    get_named_provider,
+    retry_with_backoff,
+)
 from app.logging_config import get_logger
 from app.retrieval.types import SearchResult
 
@@ -156,6 +160,8 @@ class AnswerGenerator:
         self.provider = get_named_provider(self.provider_name, model)
         self.max_tokens = max_tokens
         self.schema, self.dropped_constraints = strict_answer_schema()
+        self.last_prompt_tokens: int | None = None
+        self.last_completion_tokens: int | None = None
 
     def generate(
         self, question: str, results: list[SearchResult]
@@ -194,7 +200,14 @@ class AnswerGenerator:
 
         started = time.perf_counter()
         try:
-            raw = self._call(prompt)
+            # A tokens-per-minute ceiling is a pause, not a failure. Without
+            # this the arm loses whole cells to a limit that clears in seconds,
+            # and the loss looks like the model being unable to answer.
+            raw = retry_with_backoff(
+                lambda: self._call(prompt),
+                settings.GENERATION_RETRIES,
+                f"{self.provider.name}/{self.provider.model}",
+            )
         except GenerationError as exc:
             base.error = str(exc)
             base.latency_ms = (time.perf_counter() - started) * 1000
@@ -202,6 +215,8 @@ class AnswerGenerator:
             return base
         base.latency_ms = (time.perf_counter() - started) * 1000
         base.raw_output = raw
+        base.prompt_tokens = self.last_prompt_tokens
+        base.completion_tokens = self.last_completion_tokens
 
         try:
             envelope = AnswerEnvelope.model_validate_json(raw)
@@ -255,6 +270,54 @@ class AnswerGenerator:
                 reason = getattr(response.choices[0], "finish_reason", "unknown")
                 raise GenerationError(
                     f"groq/{provider.model}: empty completion "
+                    f"(finish_reason={reason})"
+                )
+            # Kept on the instance for the caller to read. Cost is half the
+            # comparison this project publishes, and an arm that reports no
+            # tokens cannot appear on that axis at all.
+            usage = getattr(response, "usage", None)
+            self.last_prompt_tokens = getattr(usage, "prompt_tokens", None)
+            self.last_completion_tokens = getattr(usage, "completion_tokens", None)
+            return text
+
+        if provider.name == "gemini" and client is not None:
+            # Gemini enforces schemas natively too, but accepts a different
+            # subset - anyOf rather than oneOf, and no additionalProperties.
+            # Running both arms on one model is what keeps this benchmark a
+            # comparison of retrieval against stuffing rather than of two
+            # different models, so this branch exists to make that possible.
+            from google.genai import types
+
+            from app.answer.schema import gemini_answer_schema
+
+            try:
+                response = client.models.generate_content(
+                    model=provider.model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        max_output_tokens=self.max_tokens,
+                        temperature=settings.GENERATION_TEMPERATURE,
+                        response_mime_type="application/json",
+                        response_schema=gemini_answer_schema(),
+                    ),
+                )
+                text = response.text
+            except Exception as exc:  # noqa: BLE001
+                raise GenerationError(f"gemini/{provider.model}: {exc}") from exc
+
+            usage = getattr(response, "usage_metadata", None)
+            self.last_prompt_tokens = getattr(usage, "prompt_token_count", None)
+            self.last_completion_tokens = getattr(
+                usage, "candidates_token_count", None
+            )
+
+            if not text:
+                reason = "unknown"
+                candidates = getattr(response, "candidates", None) or []
+                if candidates:
+                    reason = getattr(candidates[0], "finish_reason", "unknown")
+                raise GenerationError(
+                    f"gemini/{provider.model}: empty completion "
                     f"(finish_reason={reason})"
                 )
             return text
