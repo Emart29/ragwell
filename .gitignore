@@ -56,3 +56,4 @@ eval/extracted/
 bench_*.log
 chunk_sweep.log
 calibration.log
+report.html
