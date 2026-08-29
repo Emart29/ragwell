@@ -1,0 +1,340 @@
+{
+  "sampling": {
+    "reports": 2,
+    "repeats": 3,
+    "top_k": 8,
+    "target_accuracy": 0.9,
+    "model": "gemini/gemini-3.5-flash-lite",
+    "elapsed_seconds": 270.7
+  },
+  "expected_calibration_error": 0.15074545454545452,
+  "is_calibrated": false,
+  "bins": [
+    {
+      "low": 0.0,
+      "high": 0.4,
+      "count": 0,
+      "accuracy": 0.0,
+      "mean_confidence": 0.0,
+      "gap": 0.0,
+      "is_measurable": false
+    },
+    {
+      "low": 0.4,
+      "high": 0.6,
+      "count": 5,
+      "accuracy": 1.0,
+      "mean_confidence": 0.525,
+      "gap": -0.475,
+      "is_measurable": false
+    },
+    {
+      "low": 0.6,
+      "high": 0.7,
+      "count": 4,
+      "accuracy": 1.0,
+      "mean_confidence": 0.65,
+      "gap": -0.35,
+      "is_measurable": false
+    },
+    {
+      "low": 0.7,
+      "high": 0.8,
+      "count": 0,
+      "accuracy": 0.0,
+      "mean_confidence": 0.0,
+      "gap": 0.0,
+      "is_measurable": false
+    },
+    {
+      "low": 0.8,
+      "high": 0.9,
+      "count": 10,
+      "accuracy": 0.8,
+      "mean_confidence": 0.84995,
+      "gap": 0.04994999999999994,
+      "is_measurable": true
+    },
+    {
+      "low": 0.9,
+      "high": 1.0001,
+      "count": 14,
+      "accuracy": 0.9285714285714286,
+      "mean_confidence": 0.9785785714285714,
+      "gap": 0.050007142857142806,
+      "is_measurable": true
+    }
+  ],
+  "outcomes": [
+    {
+      "confidence": 0.9455,
+      "correct": true,
+      "question_id": "mdic_dmb_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.6,
+      "correct": true,
+      "question_id": "dmb_insured_deposits_2024",
+      "declined": false
+    },
+    {
+      "confidence": 1.0,
+      "correct": true,
+      "question_id": "fully_insured_accounts_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.8523,
+      "correct": true,
+      "question_id": "heritage_payout_speed",
+      "declined": false
+    },
+    {
+      "confidence": 0.9818,
+      "correct": true,
+      "question_id": "mfb_limit_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.65,
+      "correct": true,
+      "question_id": "coverage_effect_on_deposits",
+      "declined": false
+    },
+    {
+      "confidence": 0.8172,
+      "correct": true,
+      "question_id": "limits_by_institution_type",
+      "declined": false
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "ethiopia_scheme",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "sovereign_wealth",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "premium_tax",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "zambia_comparison",
+      "declined": true
+    },
+    {
+      "confidence": 0.9959,
+      "correct": true,
+      "question_id": "mdic_current",
+      "declined": false
+    },
+    {
+      "confidence": 0.9848,
+      "correct": false,
+      "question_id": "mfb_limit_unqualified",
+      "declined": false
+    },
+    {
+      "confidence": 0.8913,
+      "correct": true,
+      "question_id": "dmb_count_now",
+      "declined": false
+    },
+    {
+      "confidence": 0.525,
+      "correct": true,
+      "question_id": "dmb_deposits_prior_year",
+      "declined": false
+    },
+    {
+      "confidence": 0.9273,
+      "correct": true,
+      "question_id": "mdic_dmb_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.525,
+      "correct": true,
+      "question_id": "dmb_insured_deposits_2024",
+      "declined": false
+    },
+    {
+      "confidence": 1.0,
+      "correct": true,
+      "question_id": "fully_insured_accounts_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.9636,
+      "correct": true,
+      "question_id": "heritage_payout_speed",
+      "declined": false
+    },
+    {
+      "confidence": 0.9455,
+      "correct": true,
+      "question_id": "mfb_limit_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.675,
+      "correct": true,
+      "question_id": "coverage_effect_on_deposits",
+      "declined": false
+    },
+    {
+      "confidence": 0.8502,
+      "correct": true,
+      "question_id": "limits_by_institution_type",
+      "declined": false
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "ethiopia_scheme",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "sovereign_wealth",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "premium_tax",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "zambia_comparison",
+      "declined": true
+    },
+    {
+      "confidence": 0.9959,
+      "correct": true,
+      "question_id": "mdic_current",
+      "declined": false
+    },
+    {
+      "confidence": 0.8182,
+      "correct": false,
+      "question_id": "mfb_limit_unqualified",
+      "declined": false
+    },
+    {
+      "confidence": 0.8913,
+      "correct": true,
+      "question_id": "dmb_count_now",
+      "declined": false
+    },
+    {
+      "confidence": 0.525,
+      "correct": true,
+      "question_id": "dmb_deposits_prior_year",
+      "declined": false
+    },
+    {
+      "confidence": 0.9818,
+      "correct": true,
+      "question_id": "mdic_dmb_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.525,
+      "correct": true,
+      "question_id": "dmb_insured_deposits_2024",
+      "declined": false
+    },
+    {
+      "confidence": 1.0,
+      "correct": true,
+      "question_id": "fully_insured_accounts_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.8523,
+      "correct": true,
+      "question_id": "heritage_payout_speed",
+      "declined": false
+    },
+    {
+      "confidence": 0.9818,
+      "correct": true,
+      "question_id": "mfb_limit_2024",
+      "declined": false
+    },
+    {
+      "confidence": 0.675,
+      "correct": true,
+      "question_id": "coverage_effect_on_deposits",
+      "declined": false
+    },
+    {
+      "confidence": 0.8172,
+      "correct": true,
+      "question_id": "limits_by_institution_type",
+      "declined": false
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "ethiopia_scheme",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "sovereign_wealth",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "premium_tax",
+      "declined": true
+    },
+    {
+      "confidence": 0.0,
+      "correct": false,
+      "question_id": "zambia_comparison",
+      "declined": true
+    },
+    {
+      "confidence": 0.9962,
+      "correct": true,
+      "question_id": "mdic_current",
+      "declined": false
+    },
+    {
+      "confidence": 0.8182,
+      "correct": false,
+      "question_id": "mfb_limit_unqualified",
+      "declined": false
+    },
+    {
+      "confidence": 0.8913,
+      "correct": true,
+      "question_id": "dmb_count_now",
+      "declined": false
+    },
+    {
+      "confidence": 0.525,
+      "correct": true,
+      "question_id": "dmb_deposits_prior_year",
+      "declined": false
+    }
+  ]
+}
