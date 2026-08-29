@@ -157,81 +157,53 @@ and is quoted that way.
 
 ## Architecture
 
+**The request path.** A question becomes claims, and every claim is checked
+against the chunk it cites before it reaches the reader.
+
 ```mermaid
 graph TB
-    subgraph Clients
-        UI[Answer UI]
-        ASK[ask.py CLI]
-        BENCH[Benchmark harness]
-    end
+    CLIENT["Answer UI · ask.py · benchmark harness"] --> ANSWER["POST /api/answer"]
+    ANSWER --> RETRIEVE["Retrieval — vector, keyword FTS5,<br/>hybrid, HyDE, query expansion"]
+    RETRIEVE --> RERANK["Jina reranker<br/>top_k candidates → chunks_shown"]
+    RERANK --> GEN[Generator]
 
-    subgraph API["API layer"]
-        ANSWER["/api/answer"]
-        VERIFY["/api/answer/id/verify"]
-        QUERY["/api/query"]
-        INGEST["/api/ingest"]
-    end
+    CONTRACT["Contract: a claim must cite a chunk<br/>and quote it verbatim.<br/>An uncited claim cannot be constructed."] --> GEN
 
-    subgraph Ingestion
-        PARSE[Parser] --> CHUNK[Chunker]
-        CHUNK --> VALID[Quality validator]
-        VALID --> EMBED[Jina embeddings + cache]
-    end
+    GEN --> LADDER["Verification ladder<br/>1 · quote containment — free<br/>2 · lexical overlap — free<br/>3 · entailment — one model call"]
+    LADDER --> CONF["Confidence from retrieval strength,<br/>verification, coverage, agreement"]
+    CONF --> DECIDE{"Evidence<br/>sufficient?"}
+    DECIDE -->|yes| OUT["Answer with checked citations"]
+    DECIDE -->|no| DECLINE["InsufficientEvidence<br/>a first-class answer"]
 
-    subgraph Retrieval["Retrieval — 5 strategies"]
-        VEC[Vector]
-        KEY[Keyword FTS5]
-        HYB[Hybrid]
-        HYDE[HyDE]
-        EXP[Query expansion]
-        RERANK[Jina reranker]
-    end
+    VERIFY["POST /api/answer/{id}/verify"] --> LADDER
 
-    subgraph Answer["Answer layer"]
-        CONTRACT["Contract: a claim must cite<br/>a chunk and quote it verbatim"]
-        GEN[Generator]
-        LADDER["Verification ladder<br/>1. quote containment (free)<br/>2. lexical overlap (free)<br/>3. entailment (1 model call)"]
-        CONF["Confidence from evidence<br/>+ calibration curve"]
-        FALLBACK["Fallback: re-query,<br/>widen, or decline"]
-    end
-
-    subgraph Storage
-        SQLITE[(SQLite + FTS5)]
-        CHROMA[(ChromaDB)]
-    end
-
-    subgraph Measurement
-        LONGCTX["Long-context arm<br/>same contract, no retrieval"]
-        SCORE["Scorer: correctness, overreach,<br/>trap rate, hallucination"]
-        REPORT[Self-contained HTML report]
-    end
-
-    UI --> ANSWER
-    ASK --> ANSWER
-    BENCH --> ANSWER
-    BENCH --> LONGCTX
-    ANSWER --> QUERY
-    QUERY --> VEC & KEY & HYB & HYDE & EXP
-    VEC & KEY & HYB & HYDE & EXP --> RERANK
-    RERANK --> GEN
-    CONTRACT --> GEN
-    GEN --> LADDER
-    LADDER --> CONF
-    CONF --> FALLBACK
-    VERIFY --> LADDER
-
-    INGEST --> PARSE
-    EMBED --> SQLITE & CHROMA
-    VEC --> CHROMA
-    KEY --> SQLITE
-
-    LONGCTX --> SCORE
-    LADDER --> SCORE
-    SCORE --> REPORT
+    style CONTRACT fill:#fff4e5,stroke:#d68910
+    style LADDER fill:#e8f6ef,stroke:#1e8449
+    style DECLINE fill:#fdedec,stroke:#c0392b
 ```
 
-The retrieval half is ragwell as it was. The answer layer, the long-context arm
-and the measurement are what the citation work added.
+**Ingestion, storage and measurement.** Chunk ids are derived from content, so a
+citation survives re-ingestion.
+
+```mermaid
+graph LR
+    INGEST["POST /api/ingest"] --> PIPE["Parse → chunk → validate<br/>content-derived chunk ids"]
+    PIPE --> EMBED["Jina embeddings<br/>+ cache"]
+    EMBED --> SQLITE[(SQLite + FTS5)]
+    EMBED --> CHROMA[(ChromaDB)]
+
+    BENCH[Benchmark harness] --> RAG["RAG arm<br/>retrieve, then answer"]
+    BENCH --> LONG["Long-context arm<br/>same contract, no retrieval"]
+    RAG --> SCORE["Scorer — correctness, overreach,<br/>superseded-figure rate, cost"]
+    LONG --> SCORE
+    SCORE --> REPORT["Self-contained HTML report"]
+
+    SQLITE -.-> RAG
+    CHROMA -.-> RAG
+```
+
+The retrieval half is ragwell as it was. The contract, the ladder, the
+long-context arm and the scorer are what the citation work added.
 
 ---
 
