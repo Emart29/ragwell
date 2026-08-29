@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from app.api import ingest, query, documents, health, compare, evaluate
+from app.api import answer,  ingest, query, documents, health, compare, evaluate
 from app.storage.database import create_tables
 from app.storage.vector_store import VectorStore
 from app.logging_config import setup_logging, request_id_ctx, generate_request_id
@@ -95,6 +95,7 @@ app.include_router(documents.router, prefix="/api")
 app.include_router(health.router, prefix="/api")
 app.include_router(compare.router, prefix="/api")
 app.include_router(evaluate.router, prefix="/api")
+app.include_router(answer.router, prefix="/api")
 # Mounted only when the directory is present. StaticFiles raises at import
 # time if it is missing, so an unconditional mount makes the whole application
 # unimportable on a fresh clone — the frontend is built separately and is not
