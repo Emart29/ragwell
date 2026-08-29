@@ -66,14 +66,22 @@ class Embedder:
     def get_instance(cls) -> "Embedder":
         return cls()
 
+    #: What to say when the key is missing, wherever that surfaces.
+    MISSING_KEY = (
+        "JINA_API_KEY not set. Get a free key at https://jina.ai/embeddings/"
+    )
+
     def __init__(self):
         if self._initialized:
             return
+        # Constructed at import time by the retrieval layer, so a missing key
+        # must not raise here: it made the whole application unimportable on a
+        # fresh clone, and the crash arrived before any message explaining what
+        # to do about it. The failure belongs at the point of use, where the
+        # caller can report it.
         self.api_key = settings.JINA_API_KEY
         if not self.api_key:
-            raise ValueError(
-                "JINA_API_KEY not set. Get a free key at https://jina.ai/embeddings/"
-            )
+            logger.warning("%s Embedding will fail until it is set.", self.MISSING_KEY)
         # One cache per process, alongside the singleton. Re-embedding text
         # that has not changed is the most avoidable cost in the pipeline:
         # comparing chunking strategies re-ingests the same corpus repeatedly,
@@ -115,6 +123,7 @@ class Embedder:
         """Embed every text given, with no cache lookup. Called on misses."""
         if not texts:
             return []
+        self._require_key()
 
         all_embeddings: list[list[float]] = []
         batch_size = 50  # Reduced batch size to avoid rate limits
@@ -200,8 +209,14 @@ class Embedder:
 
         return all_embeddings
 
+    def _require_key(self) -> None:
+        """Raise where a caller can act on it, rather than at import."""
+        if not self.api_key:
+            raise ValueError(self.MISSING_KEY)
+
     def embed_query(self, query: str) -> list[float]:
         """Embed a search query using ``retrieval.query`` task."""
+        self._require_key()
         payload = {
             "model": self.model,
             "input": [query],

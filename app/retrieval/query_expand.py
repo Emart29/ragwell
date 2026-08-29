@@ -45,7 +45,7 @@ class QueryExpansion:
         Returns:
             Search results
         """
-        if not provider.get_provider().groq_client and not provider.get_provider().gemini_model:
+        if not provider.get_provider().is_available():
             logger.warning("LLM providers unavailable, falling back to standard vector search")
             return self.vector_search.search(query, top_k=top_k)
         
@@ -113,7 +113,7 @@ Write the answer as if it were a passage from a relevant document:"""
         Returns:
             Merged search results
         """
-        if not provider.get_provider().groq_client and not provider.get_provider().gemini_model:
+        if not provider.get_provider().is_available():
             logger.warning("LLM providers unavailable, falling back to standard vector search")
             return self.vector_search.search(query, top_k=top_k)
         

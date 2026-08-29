@@ -31,11 +31,19 @@ def _safe_json(response: requests.Response):
         return None
 
 
-def _request(method: str, url: str, **kwargs):
+def _request(method: str, url: str, quiet: bool = False, **kwargs):
+    """Make a request, reporting transport failures rather than raising.
+
+    ``quiet`` suppresses the failure line for callers where a refused
+    connection is the expected state -- polling a server that is still
+    starting up, where the message would otherwise print once a second and
+    make a healthy first run look broken.
+    """
     try:
         return requests.request(method, url, timeout=kwargs.pop("timeout", 20), **kwargs)
     except requests.exceptions.ConnectionError:
-        print(f"[FAIL] Connection error contacting {url}. Is API running?")
+        if not quiet:
+            print(f"[FAIL] Connection error contacting {url}. Is API running?")
         return None
     except requests.exceptions.RequestException as exc:
         print(f"[FAIL] Request failed for {url}: {exc}")
@@ -68,7 +76,7 @@ def clean_previous_data():
 
 
 def start_api():
-    health = _request("GET", f"{API_URL}/api/health", timeout=2)
+    health = _request("GET", f"{API_URL}/api/health", timeout=2, quiet=True)
     if health is not None and health.status_code == 200:
         print("[OK] API already running")
         return None
@@ -88,7 +96,7 @@ def start_api():
 
     for i in range(30):
         time.sleep(1)
-        health = _request("GET", f"{API_URL}/api/health", timeout=2)
+        health = _request("GET", f"{API_URL}/api/health", timeout=2, quiet=True)
         if health is not None and health.status_code == 200:
             print("[OK] API started")
             return process
