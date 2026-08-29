@@ -2,11 +2,15 @@
 import pytest
 from pathlib import Path
 import time
+from unittest.mock import patch
+
+from app.llm import provider
 from app.pipeline import process_document
 from app.retrieval.vector_search import VectorSearch
 from app.retrieval.keyword_search import KeywordSearch
 from app.retrieval.hybrid_search import HybridSearch, reciprocal_rank_fusion
 from app.retrieval.reranker import Reranker
+from app.retrieval.query_expand import QueryExpansion
 from app.retrieval.retriever import Retriever
 from app.retrieval.types import SearchResult
 from app.storage.vector_store import VectorStore
@@ -306,6 +310,29 @@ class TestRetriever:
             # Should fallback to hybrid
             assert result.strategy_used == 'hybrid'
     
+    def test_query_expansion_guards_use_the_public_provider_api(self):
+        """The availability guard must survive a provider refactor.
+
+        ``QueryExpansion`` is reachable directly from the query API, not only
+        through ``Retriever``, whose own guard runs first and hides a broken
+        one here. When the provider grew named backends its private client
+        attributes went away, and these two call sites kept reading them --
+        raising ``AttributeError`` on every HyDE and expansion request made
+        through the API while the retriever-level test stayed green.
+        """
+        expansion = QueryExpansion()
+
+        class Unavailable:
+            def is_available(self):
+                return False
+
+        with patch.object(provider, "get_provider", return_value=Unavailable()):
+            hyde = expansion.hyde_search("test", top_k=3)
+            expanded = expansion.expanded_search("test", top_k=3)
+
+        assert isinstance(hyde, list)
+        assert isinstance(expanded, list)
+
     def test_search_simple(self):
         """Test simple search convenience method."""
         retriever = Retriever()
