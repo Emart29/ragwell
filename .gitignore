@@ -54,3 +54,4 @@ eval/extracted/
 # Run logs are noise; the results file is the evidence and is committed,
 # so a reader can check any number without spending a day of API quota.
 bench_*.log
+chunk_sweep.log
