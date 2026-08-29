@@ -128,6 +128,15 @@ const esc = (s) => String(s).replace(/[&<>"']/g,
 // fabricated quote and must not be shown as one.
 const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
+// PDF extraction keeps the line breaks of the printed page. Rendered under
+// pre-wrap those become a narrow ragged column inside a wide panel, which
+// makes the passage harder to read here than in the original document.
+// Rejoin the wrapped lines and keep blank lines as paragraph breaks. The
+// highlight is computed on the reflowed text, so its offsets stay valid.
+const reflow = (s) => s.split(/\n{2,}/)
+  .map((para) => para.replace(/\s*\n\s*/g, " ").trim())
+  .join("\n\n");
+
 function highlight(chunkText, quote) {
   const hay = norm(chunkText), needle = norm(quote);
   const at = hay.indexOf(needle);
@@ -164,10 +173,11 @@ function renderClaim(claim, chunks, index) {
   }).join("; ") || "chunk not returned";
 
   const evidence = cited.map((c) => {
-    const split = highlight(c.text, claim.quote);
+    const text = reflow(c.text);
+    const split = highlight(text, claim.quote);
     const body = split
       ? `${esc(split[0])}<mark>${esc(split[1])}</mark>${esc(split[2])}`
-      : esc(c.text);
+      : esc(text);
     const warn = split ? "" :
       `<p class="missing-quote">The quoted words were not found in this chunk.
        That is what "unverified" means: the citation points here and the passage
@@ -219,7 +229,7 @@ function render(data) {
       <span>${esc(data.model)}</span>
       <span>${(data.prompt_tokens || 0).toLocaleString()} prompt tokens</span>
       <span>${Math.round(data.latency_ms)} ms</span>
-      <span>${(data.chunks || []).length} chunks searched</span>
+      <span>${(data.chunks || []).length} chunks shown to the model</span>
     </div>` + (notes ? `<ul class="notes">${notes}</ul>` : "");
 
   // The first claim renders already open, which fires no toggle event.
