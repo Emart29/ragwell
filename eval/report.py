@@ -186,11 +186,12 @@ def crossover_section(results: dict | None) -> str:
             )
             continue
         per_question = cell["prompt_tokens"] // n if n else 0
+        scored = len(board.answerable)
         by_arm[cell["arm"]].append((cell["reports"], board.correctness * 100))
         cost[cell["arm"]].append((cell["reports"], per_question))
         rows.append(
             f"<tr><td>{esc(cell['arm'])}</td><td>{esc(cell['corpus_size'])}</td>"
-            f"<td class='num'>{board.correctness:.0%}<div class='n'>n={n}</div></td>"
+            f"<td class='num'>{board.correctness:.0%}<div class='n'>n={scored}</div></td>"
             f"<td class='num'>{board.trap_rate:.0%}</td>"
             f"<td class='num'>{board.overreach_rate:.0%}</td>"
             f"<td class='num'>{per_question:,}</td>"
@@ -238,11 +239,11 @@ def chunking_section(results: dict | None) -> str:
     rows = []
     for cell in sorted(results["cells"], key=lambda c: c["chunk_size"]):
         board = board_of(cell)
-        n = len(cell.get("scores", []))
+        scored = len(board.answerable)
         rows.append(
             f"<tr><td class='num'>{cell['chunk_size']}</td>"
             f"<td class='num'>{cell['chunks_indexed']:,}</td>"
-            f"<td class='num'>{board.correctness:.0%}<div class='n'>n={n}</div></td>"
+            f"<td class='num'>{board.correctness:.0%}<div class='n'>n={scored}</div></td>"
             f"<td class='num'>{board.trap_rate:.0%}</td>"
             f"<td class='num'>{cell['mean_cited_chunk_tokens']:.0f}</td>"
             f"<td class='num'>{cell.get('total_claims', 0)}</td></tr>"

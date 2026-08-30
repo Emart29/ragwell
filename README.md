@@ -47,8 +47,10 @@ about. So the decline is a first-class response, not an error path:
 
 ### What was measured
 
-Four Nigeria Deposit Insurance Corporation annual reports (2020–2024), sixteen
-hand-labelled questions, both arms on `gemini-3.5-flash-lite`, 29 August 2026.
+Four Nigeria Deposit Insurance Corporation annual reports (2020–2024) and
+sixteen hand-labelled questions — a fixed core ten drive the grid and the chunk
+sweep, and the calibration run uses the full set. Both arms on
+`gemini-3.5-flash-lite`, 29 August 2026.
 Raw results are committed as `benchmark_results.json`, `chunking_results.json`
 and `calibration_results.json`.
 
@@ -66,9 +68,17 @@ question. Retrieval's cost does not move as the corpus grows; that is the whole
 point of retrieval and it is the one result here that is arithmetic rather than
 sampling.
 
-**Read the accuracy column with its n.** Ten questions per cell means one
-question is ten points, so a gap that size is noise. The accuracy comparison is
-inconclusive at this sample size and is reported as such.
+**Read the accuracy column with its n.** Ten questions run per cell, but the
+percentage is over the **eight** that are scorable for correctness: the two
+ABSENT questions are scored on whether declining was right, not on content, so
+they are not in the denominator. One question is therefore **12.5 points**, and
+a gap that size is noise. The accuracy comparison is inconclusive at this sample
+size and is reported as such.
+
+One cell is thinner still. Long context at three reports lost a question to an
+error, so its 86% is 6 of 7 — one question is 14.3 points there. It is the only
+cell whose n differs, and it is the reason the column is read as inconclusive
+rather than as a curve.
 
 **Long context does not solve superseded documents.** This is the result that
 surprised me. Seeing all four reports at once ought to let a model resolve a
@@ -150,8 +160,15 @@ and is quoted that way.
 
 - **Provider-, model- and date-specific.** Measured on 29 August 2026. Two models
   used earlier in this work were withdrawn by their provider mid-benchmark.
-- **Ten questions per cell.** Strong enough for the cost and trap findings, not
-  for accuracy differences.
+- **Ten questions per cell, eight of them scorable for correctness.** The two
+  ABSENT questions test declining rather than content, so the accuracy
+  denominator is eight — seven in the long-context cell at three reports, which
+  lost one to an error. Strong enough for the cost and trap findings, not for
+  accuracy differences.
+- **Sixteen questions exist; the grid uses a fixed ten.** The core subset is held
+  constant across corpus sizes so the column stays comparable along its own axis
+  (`eval/run.py`). The calibration run uses the full set instead, because a curve
+  wants points — fifteen of the sixteen are answerable from its corpus.
 - **The corpus is one regulator's annual reports.** Dense, numeric, and English.
   A corpus of prose would behave differently.
 - **The scripts reset the index.** Each measurement script clears the store and
