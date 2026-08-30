@@ -58,4 +58,10 @@ chunk_sweep.log
 calibration.log
 report.html
 .playwright-mcp/
+
+# Screenshots land in the working tree constantly while driving the UI, so
+# they are ignored by default. The ones the README embeds are deliberate and
+# must be tracked -- without this exception `git add` on the directory skips
+# them silently and the README renders with broken images on GitHub.
 *.png
+!docs/screenshots/*.png
